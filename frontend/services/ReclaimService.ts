@@ -16,6 +16,11 @@
  */
 
 import { ReclaimProofRequest } from "@reclaimprotocol/js-sdk";
+import {
+  sanitizeProofContext,
+  sanitizeExtractedParams,
+  SensitiveDataLeakError,
+} from "../lib/sensitiveDataMasker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,6 +149,12 @@ export async function initGitHubContributionsProof(
         const result = await handleProofCallback(proofData, githubUsername);
         onProofReady(result.proof);
       } catch (err) {
+        if (err instanceof SensitiveDataLeakError) {
+          // Fuite détectée : on bloque silencieusement et on remonte l'erreur
+          // sans logger le payload pour ne pas exposer la donnée.
+          onError?.(err);
+          return;
+        }
         onError?.(err instanceof Error ? err : new Error(String(err)));
       }
     },
@@ -195,11 +206,18 @@ export async function handleProofCallback(
     // Le contexte n'est pas du JSON valide – on continue avec un objet vide
   }
 
+  // ── Audit de sécurité : détection de fuite avant tout traitement ────────
+  // Lance une SensitiveDataLeakError si un token/password est détecté.
+  sanitizeProofContext(rawProof, { throwOnLeak: true });
+
+  // Nettoyage défensif des paramètres extraits (double-sécurité)
+  const safeExtractedParams = sanitizeExtractedParams(extractedParams);
+
   const claim = signedClaim["claim"] as Record<string, unknown>;
   const zkProof: ZKProof = {
     raw: JSON.stringify(rawProof),
     provider: claimInfo["provider"] ?? "http",
-    extractedParams,
+    extractedParams: safeExtractedParams,
     timestampS: Number(claim?.["timestampS"] ?? 0),
     identifier: String(claim?.["identifier"] ?? "0x0"),
   };
