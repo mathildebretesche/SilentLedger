@@ -99,7 +99,7 @@ export default function ProfilePage() {
           zIndex: 1,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div
             style={{
               width: 32,
@@ -123,7 +123,7 @@ export default function ProfilePage() {
           >
             Silent Ledger
           </span>
-        </div>
+        </Link>
 
         <Link
           href="/"

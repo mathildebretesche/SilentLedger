@@ -5,15 +5,16 @@
  * Configure Wagmi + RainbowKit + React Query pour l'ensemble de l'app.
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { WagmiProvider as WagmiCoreProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RainbowKitProvider,
   darkTheme,
-  getDefaultConfig,
+  getDefaultWallets,
 } from "@rainbow-me/rainbowkit";
 import { mainnet, sepolia } from "wagmi/chains";
+import { createConfig, http } from "wagmi";
 
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -27,13 +28,15 @@ if (!projectId) {
 }
 
 // ── Wagmi config ───────────────────────────────────────────────────────────
-// getDefaultConfig génère automatiquement les connecteurs Metamask, WalletConnect
-// Rainbow, Coinbase etc. et configure les transports HTTP/WebSocket.
-const wagmiConfig = getDefaultConfig({
-  appName: "Silent Ledger",
-  projectId,                   // read from NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+const { wallets } = getDefaultWallets();
+
+const wagmiConfig = createConfig({
   chains: [mainnet, sepolia],
-  ssr: true,                   // Next.js App Router = SSR activé
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+  },
+  ssr: false, // EXPLICITLY disable SSR here to prevent localStorage errors
 });
 
 // Un seul QueryClient partagé – persiste entre les navigations client.
@@ -48,6 +51,12 @@ interface Web3ProviderProps {
  * WagmiCoreProvider → QueryClientProvider → RainbowKitProvider
  */
 export function Web3Provider({ children }: Web3ProviderProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <WagmiCoreProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -59,9 +68,10 @@ export function Web3Provider({ children }: Web3ProviderProps) {
             fontStack: "system",
           })}
         >
-          {children}
+          {mounted && children}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiCoreProvider>
   );
 }
+

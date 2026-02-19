@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import "./globals.css";
-import { Web3Provider } from "@/providers/Web3Provider";
+
+const Web3Provider = dynamic(
+  () => import("@/providers/Web3Provider").then((mod) => mod.Web3Provider),
+  { ssr: false }
+);
 
 export const metadata: Metadata = {
   title: "Silent Ledger – Proof of Intelligence",

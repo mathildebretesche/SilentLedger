@@ -11,8 +11,6 @@ import {
   User,
   Search,
   X,
-  Plus,
-  ArrowDown,
   Globe,
   Ghost,
   Database,
@@ -212,7 +210,7 @@ export default function HomePage() {
             <div className="space-y-8 text-xl text-black/60 leading-relaxed font-medium">
               <p>
                 Every day, you contribute to the global knowledge pool. On GitHub, Discord, Slack.
-                You build value, but <span className="text-black font-bold">you don't own it.</span>
+                You build value, but <span className="text-black font-bold">you don&apos;t own it.</span>
               </p>
               <p>
                 To prove your expertise, you must expose your identity, your history, and your private tokens.

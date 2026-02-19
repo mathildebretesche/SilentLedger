@@ -16,6 +16,7 @@
  */
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
@@ -175,7 +176,7 @@ export default function SilentDashboard() {
           zIndex: 1,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div
             style={{
               width: 32,
@@ -199,7 +200,7 @@ export default function SilentDashboard() {
           >
             Silent Ledger
           </span>
-        </div>
+        </Link>
 
         <ConnectButton accountStatus="avatar" chainStatus="icon" showBalance={false} />
       </header>
@@ -580,7 +581,7 @@ export default function SilentDashboard() {
                 style={{ margin: "0 auto 12px" }}
               />
               <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>
-                Aucune attestation pour l'instant.
+                Aucune attestation pour l&apos;instant.
                 <br />
                 <span style={{ color: "var(--text-secondary)" }}>
                   Stampez votre première contribution GitHub ci-dessus.

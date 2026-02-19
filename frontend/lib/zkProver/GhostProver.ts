@@ -51,7 +51,7 @@
 
 import * as snarkjs from "snarkjs";
 
-import type { ZKProof } from "../../../services/ReclaimService";
+import type { ZKProof } from "../../services/ReclaimService";
 import type {
   GhostAttestation,
   GhostCircuitInputs,

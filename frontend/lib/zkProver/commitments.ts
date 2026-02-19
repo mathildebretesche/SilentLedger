@@ -21,7 +21,7 @@
  */
 
 import { buildPoseidon } from "circomlibjs";
-import { keccak256, toBytes, concat } from "viem";
+import { keccak256, toBytes } from "viem";
 
 // ─── Initialisation lazy du hasher Poseidon ───────────────────────────────────
 
