@@ -28,7 +28,7 @@ export interface ProofRequestOptions {
   /** Username GitHub à prouver (sera hashé avant envoi on-chain). */
   githubUsername: string;
   /** Callback déclenché quand la preuve ZK est prête. */
-  onProofReady: (result: ZKProof) => void;
+  onProofReady: (result: ReclaimCallbackResult) => void;
   /** Callback d'erreur. */
   onError?: (error: Error) => void;
 }
@@ -147,7 +147,7 @@ export async function initGitHubContributionsProof(
     onSuccess: async (proofData: unknown) => {
       try {
         const result = await handleProofCallback(proofData, githubUsername);
-        onProofReady(result.proof);
+        onProofReady(result);
       } catch (err) {
         if (err instanceof SensitiveDataLeakError) {
           // Fuite détectée : on bloque silencieusement et on remonte l'erreur

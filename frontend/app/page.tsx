@@ -1,16 +1,6 @@
 "use client";
 
-/**
- * HomePage – page.tsx
- * Landing page with an animated selection overlay triggered by "Launch App".
- *
- * Flow:
- *  Landing hero  ──[Launch App]──▶  Selection overlay
- *                                        ├─[My Profile]──▶  /dashboard  (wallet connect)
- *                                        └─[Check a Profile]──▶  /profile  (address search)
- */
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Fingerprint,
@@ -21,427 +11,392 @@ import {
   User,
   Search,
   X,
-  ChevronRight,
+  Plus,
+  ArrowDown,
+  Globe,
+  Ghost,
+  Database,
+  Hash,
+  Cpu,
 } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
   const [showOverlay, setShowOverlay] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  // Track scroll for parallax effects
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Intersection Observer for fade-in sections
+  const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
+  const sectionRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible((prev) => ({ ...prev, [entry.target.id]: true }));
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    Object.values(sectionRefs.current).forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className="min-h-screen relative flex flex-col"
+      style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
     >
-      {/* ── Background glow ──────────────────────────────────────────────── */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: "20%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 800,
-          height: 400,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse, rgba(124,58,237,0.1) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* ── Landing Hero ─────────────────────────────────────────────────── */}
-      <div
-        style={{
-          maxWidth: 560,
-          width: "100%",
-          textAlign: "center",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {/* Logo */}
-        <div
+      {/* ── Dynamic Floating Background (Parallax Layer) ────────────────── */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Large Blurred Blobs */}
+        <div 
+          className="absolute w-[800px] h-[800px] rounded-full opacity-[0.06]"
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            background: "linear-gradient(135deg, #7c3aed, #5b21b6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 28px",
-            boxShadow: "0 16px 48px rgba(124,58,237,0.4)",
+            top: "-10%",
+            left: "-5%",
+            background: "radial-gradient(circle, #7c3aed 0%, transparent 70%)",
+            filter: "blur(140px)",
+            transform: `translate(${scrollY * 0.05}px, ${scrollY * 0.2}px)`,
           }}
-        >
-          <Fingerprint size={28} color="white" />
-        </div>
-
-        {/* Tagline badge */}
-        <div
+        />
+        <div 
+          className="absolute w-[600px] h-[600px] rounded-full opacity-[0.04]"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 12px",
-            background: "rgba(124,58,237,0.1)",
-            border: "1px solid rgba(124,58,237,0.25)",
-            borderRadius: 20,
-            fontSize: 12,
-            fontWeight: 500,
-            color: "var(--accent-light)",
-            marginBottom: 20,
+            bottom: "10%",
+            right: "-10%",
+            background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)",
+            filter: "blur(120px)",
+            transform: `translate(${scrollY * -0.1}px, ${scrollY * -0.15}px)`,
           }}
-        >
-          <Zap size={11} />
-          ETH Denver 2026 · Proof of Intelligence
-        </div>
+        />
 
-        <h1
-          style={{
-            fontSize: 44,
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color: "var(--text-primary)",
-            lineHeight: 1.15,
-            marginBottom: 16,
-          }}
-        >
-          Silent{" "}
-          <span
+        {/* Floating Icons with individual speeds */}
+        {[
+          { icon: <Shield size={40} />, t: "15%", l: "12%", s: 0.4, o: 0.04, r: 15 },
+          { icon: <Lock size={32} />, t: "65%", l: "88%", s: 0.2, o: 0.03, r: -10 },
+          { icon: <Fingerprint size={56} />, t: "82%", l: "8%", s: 0.7, o: 0.03, r: 40 },
+          { icon: <Zap size={48} />, t: "28%", l: "78%", s: 0.3, o: 0.05, r: -20 },
+          { icon: <Database size={32} />, t: "52%", l: "18%", s: 0.5, o: 0.04, r: 12 },
+          { icon: <Hash size={44} />, t: "12%", l: "92%", s: 0.25, o: 0.04, r: 25 },
+          { icon: <Cpu size={36} />, t: "40%", l: "85%", s: 0.6, o: 0.03, r: -5 },
+        ].map((item, i) => (
+          <div
+            key={i}
+            className="absolute transition-transform duration-75 ease-out"
             style={{
-              background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              top: item.t,
+              left: item.l,
+              opacity: item.o,
+              transform: `translateY(${scrollY * item.s}px) rotate(${item.r + scrollY * 0.04}deg)`,
             }}
           >
-            Ledger
-          </span>
-        </h1>
+            {item.icon}
+          </div>
+        ))}
 
-        <p
+        {/* Animated Grid */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
           style={{
-            fontSize: 16,
-            color: "var(--text-secondary)",
-            lineHeight: 1.7,
-            maxWidth: 440,
-            margin: "0 auto 40px",
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)`,
+            backgroundSize: "80px 80px",
+            backgroundPosition: `0px ${scrollY * 0.08}px`,
           }}
-        >
-          Transformez vos contributions GitHub, Discord et Slack en attestations
-          on-chain anonymes via zkTLS. De la{" "}
-          <em style={{ color: "var(--text-primary)", fontStyle: "normal", fontWeight: 500 }}>
-            Proof of Stake
-          </em>{" "}
-          à la{" "}
-          <em style={{ color: "var(--accent-light)", fontStyle: "normal", fontWeight: 600 }}>
-            Proof of Knowledge
-          </em>
-          .
-        </p>
-
-        {/* Launch App CTA */}
-        <button
-          id="launch-app-btn"
-          onClick={() => setShowOverlay(true)}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "14px 28px",
-            background: "linear-gradient(135deg, #7c3aed, #5b21b6)",
-            color: "white",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: "pointer",
-            transition: "transform 0.15s, box-shadow 0.15s",
-            boxShadow: "0 8px 32px rgba(124,58,237,0.35)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-            (e.currentTarget as HTMLButtonElement).style.boxShadow =
-              "0 12px 40px rgba(124,58,237,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-            (e.currentTarget as HTMLButtonElement).style.boxShadow =
-              "0 8px 32px rgba(124,58,237,0.35)";
-          }}
-        >
-          Launch App
-          <ArrowRight size={16} />
-        </button>
-
-        {/* Feature pills */}
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            justifyContent: "center",
-            marginTop: 48,
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { icon: <Lock size={13} />, label: "zkTLS Reclaim" },
-            { icon: <Shield size={13} />, label: "EAS Attestations" },
-            { icon: <Fingerprint size={13} />, label: "Pseudonyme" },
-          ].map(({ icon, label }) => (
-            <div
-              key={label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 14px",
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                fontSize: 12,
-                color: "var(--text-secondary)",
-              }}
-            >
-              {icon}
-              {label}
-            </div>
-          ))}
-        </div>
+        />
       </div>
+
+      {/* ── Navigation ─────────────────────────────────────────────────── */}
+      <nav className="relative z-20 flex items-center justify-between px-8 py-8 max-w-7xl mx-auto w-full">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white shadow-sm rounded-xl flex items-center justify-center border border-black/[0.05]">
+            <Fingerprint size={22} className="text-violet-600" />
+          </div>
+          <span className="font-bold text-xl tracking-tighter">Silent Ledger</span>
+        </div>
+        <div className="hidden md:flex items-center gap-8">
+          <button 
+            onClick={() => setShowOverlay(true)}
+            className="px-6 py-2.5 bg-black text-white text-sm font-bold rounded-full hover:bg-black/80 transition-all active:scale-95 shadow-lg shadow-black/10"
+          >
+            Launch App
+          </button>
+        </div>
+      </nav>
+
+      {/* ── Hero Section ───────────────────────────────────────────────── */}
+      <main 
+        id="hero"
+        ref={(el) => { if (el) sectionRefs.current["hero"] = el; }}
+        className={`relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center px-8 max-w-7xl mx-auto w-full gap-16 lg:gap-24 py-20 lg:py-32 transition-all duration-1000 ${isVisible["hero"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+      >
+        <div className="flex-1 text-center lg:text-left" style={{ transform: `translateY(${scrollY * -0.05}px)` }}>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-50 border border-violet-100 text-[11px] font-bold uppercase tracking-wider text-violet-600 mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+            Digital Sovereignty Network
+          </div>
+          
+          <h1 className="text-7xl lg:text-[110px] font-[900] tracking-tighter leading-[0.8] mb-10">
+            <span className="block text-black">THE SILENT</span>
+            <span className="text-transparent" style={{ WebkitTextStroke: "1.5px rgba(0,0,0,0.15)" }}>REVOLUTION.</span>
+          </h1>
+          
+          <p className="text-xl text-black/50 max-w-md mb-12 leading-relaxed font-medium">
+            Your contributions. Your reputation. <br/>
+            <span className="text-black font-bold italic">Completely Anonymous.</span>
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+            <button
+              onClick={() => setShowOverlay(true)}
+              className="group relative flex items-center gap-3 px-10 py-5 bg-violet-600 text-white rounded-2xl font-bold text-lg overflow-hidden transition-all hover:bg-violet-700 hover:shadow-[0_20px_40px_rgba(124,58,237,0.25)] active:scale-95"
+            >
+              <span className="relative z-10">Get Started</span>
+              <ArrowRight size={20} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        <div 
+          className="flex-1 relative hidden lg:block" 
+          style={{ transform: `rotate(${scrollY * 0.01}deg) translateY(${scrollY * 0.03}px)` }}
+        >
+          <div className="glass-card relative z-10 p-10 w-[440px] aspect-[4/5] flex flex-col shadow-2xl transition-transform duration-500 hover:scale-[1.02]">
+             <div className="flex items-center justify-between mb-12">
+                <Ghost size={24} className="text-violet-600/20" />
+                <div className="px-3 py-1 rounded-full bg-black/5 text-[10px] font-black">ENCRYPTED_LEDGER</div>
+             </div>
+             <div className="space-y-6">
+                <div className="h-4 w-2/3 bg-black/5 rounded-full" />
+                <div className="h-4 w-1/3 bg-black/5 rounded-full" />
+                <div className="pt-8 space-y-4">
+                   <div className="h-16 w-full bg-black/[0.02] border border-black/[0.05] rounded-2xl flex items-center px-4 gap-4">
+                      <Zap size={20} className="text-violet-600" />
+                      <div className="h-2 w-1/2 bg-black/10 rounded-full" />
+                   </div>
+                   <div className="h-16 w-full bg-black/[0.02] border border-black/[0.05] rounded-2xl flex items-center px-4 gap-4 opacity-40">
+                      <div className="w-5 h-5 rounded bg-black/10" />
+                      <div className="h-2 w-1/3 bg-black/10 rounded-full" />
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      </main>
+
+      {/* ── Problem Section ────────────────────────────────────────────── */}
+      <section 
+        id="problem"
+        ref={(el) => { if (el) sectionRefs.current["problem"] = el; }}
+        className={`relative z-10 py-32 px-8 max-w-7xl mx-auto w-full transition-all duration-1000 ${isVisible["problem"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-24"}`}
+      >
+        <div className="flex flex-col lg:flex-row gap-20 items-start">
+          <div className="lg:w-1/2" style={{ transform: `translateY(${scrollY * -0.02}px)` }}>
+            <h2 className="text-5xl lg:text-[80px] font-black tracking-tighter leading-[0.9] mb-10">
+              REPUTATION IS <br/>
+              <span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(0,0,0,0.3)" }}>TRAPPED.</span>
+            </h2>
+            <div className="space-y-8 text-xl text-black/60 leading-relaxed font-medium">
+              <p>
+                Every day, you contribute to the global knowledge pool. On GitHub, Discord, Slack. 
+                You build value, but <span className="text-black font-bold">you don't own it.</span>
+              </p>
+              <p>
+                To prove your expertise, you must expose your identity, your history, and your private tokens. 
+                You are forced to choose between <span className="text-violet-600 font-bold">Verification</span> and <span className="text-violet-600 font-bold">Privacy.</span>
+              </p>
+            </div>
+          </div>
+          
+          <div className="lg:w-1/2 grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[
+              { 
+                icon: <Globe className="text-red-500" />, 
+                title: "Data Silos", 
+                text: "Your contributions are locked within centralized platforms.",
+                speed: 0.05
+              },
+              { 
+                icon: <Lock className="text-red-500" />, 
+                title: "Privacy Leak", 
+                text: "Proving your work requires revealing sensitive session cookies.",
+                speed: 0.1
+              },
+              { 
+                icon: <Fingerprint className="text-red-500" />, 
+                title: "Fixed ID", 
+                text: "You can't prove knowledge without linking your real-world identity.",
+                speed: 0.03
+              },
+              { 
+                icon: <Shield className="text-red-500" />, 
+                title: "Fragile Trust", 
+                text: "Reputation vanishes if you lose access to a single account.",
+                speed: 0.08
+              }
+            ].map((item, i) => (
+              <div 
+                key={i} 
+                className="glass-card p-8 group hover:border-red-200 transition-all"
+                style={{ transform: `translateY(${scrollY * item.speed}px)` }}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  {item.icon}
+                </div>
+                <h3 className="text-lg font-bold mb-3 uppercase tracking-tight">{item.title}</h3>
+                <p className="text-sm text-black/40 leading-relaxed">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Solution Section ────────────────────────────────────────────── */}
+      <section 
+        id="solution"
+        ref={(el) => { if (el) sectionRefs.current["solution"] = el; }}
+        className={`relative z-10 py-32 px-8 max-w-7xl mx-auto w-full transition-all duration-1000 ${isVisible["solution"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-24"}`}
+      >
+        <div className="bg-black text-white rounded-[60px] p-12 lg:p-24 overflow-hidden relative group">
+          <div 
+            className="absolute top-0 right-0 w-[600px] h-[600px] bg-violet-600/30 blur-[140px] rounded-full transition-transform duration-700 ease-out"
+            style={{ transform: `translate(30%, -30%) translateY(${scrollY * 0.1}px)` }}
+          />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row gap-20 items-center">
+             <div className="lg:w-1/2">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+                   <Fingerprint size={32} className="text-black" />
+                </div>
+                <h2 className="text-5xl lg:text-7xl font-black tracking-tighter leading-none mb-10">
+                   THE SILENT <br/>
+                   <span className="text-white/30">RESPONSE.</span>
+                </h2>
+                <p className="text-xl text-white/50 leading-relaxed font-medium mb-12">
+                   Silent Ledger uses <span className="text-white font-bold">zkTLS</span> to bridge your Web2 reputation to the chain without ever seeing your secrets. 
+                   Verifiable. Anonymous. Sovereign.
+                </p>
+                <button 
+                  onClick={() => setShowOverlay(true)}
+                  className="px-10 py-5 bg-white text-black rounded-2xl font-black text-lg hover:bg-white/90 transition-all flex items-center gap-3"
+                >
+                  Join the Protocol <ArrowRight size={20} />
+                </button>
+             </div>
+             
+             <div className="lg:w-1/2 grid grid-cols-2 gap-4">
+                {[
+                  { label: "zkTLS", sub: "MPC-TLS Tech", speed: 0.02 },
+                  { label: "EAS", sub: "Global Standards", speed: -0.015 },
+                  { label: "100%", label2: "Private", type: "stat", speed: 0.035 },
+                  { label: "0", label2: "Storage", type: "stat", speed: -0.025 }
+                ].map((item, i) => (
+                  <div 
+                    key={i} 
+                    className="p-8 border border-white/10 rounded-[32px] bg-white/5 backdrop-blur-sm transition-transform duration-500"
+                    style={{ transform: `translateY(${scrollY * item.speed}px)` }}
+                  >
+                    {item.type === "stat" ? (
+                      <>
+                        <div className="text-4xl font-black mb-1">{item.label}</div>
+                        <div className="text-[10px] uppercase font-black tracking-widest text-white/30">{item.label2}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-2xl font-black mb-1">{item.label}</div>
+                        <div className="text-[10px] uppercase font-black tracking-widest text-white/30">{item.sub}</div>
+                      </>
+                    )}
+                  </div>
+                ))}
+             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────────────────────── */}
+      <footer className="relative z-10 px-8 py-20 max-w-7xl mx-auto w-full flex flex-col items-center gap-12 text-center">
+        <div className="w-12 h-12 bg-black text-white rounded-xl flex items-center justify-center">
+          <Fingerprint size={24} />
+        </div>
+        <div className="text-black/30 text-xs font-bold uppercase tracking-[0.4em]">
+          The Future is Silent
+        </div>
+        <div className="h-px w-24 bg-black/10" />
+        <div className="flex gap-12">
+           {["Protocol", "Privacy", "Security", "GitHub"].map(item => (
+             <a key={item} href="#" className="text-[11px] font-black uppercase tracking-widest text-black/40 hover:text-black transition-colors">{item}</a>
+           ))}
+        </div>
+      </footer>
 
       {/* ── Selection Overlay ─────────────────────────────────────────────── */}
       {showOverlay && (
         <>
-          {/* Backdrop */}
           <div
             onClick={() => setShowOverlay(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,0.7)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              zIndex: 10,
-              animation: "fadeIn 0.2s ease both",
-            }}
+            className="fixed inset-0 bg-white/40 backdrop-blur-2xl z-[100] animate-in fade-in duration-500"
           />
 
-          {/* Panel */}
-          <div
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              zIndex: 11,
-              width: "100%",
-              maxWidth: 520,
-              padding: "0 24px",
-              animation: "fadeInUp 0.25s ease both",
-            }}
-          >
-            {/* Card */}
-            <div
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-hover)",
-                borderRadius: 20,
-                padding: "36px 32px",
-                boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.15)",
-              }}
-            >
-              {/* Header row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-6 pointer-events-none">
+            <div className="bg-white/90 border border-white w-full max-w-2xl rounded-[48px] p-16 shadow-[0_40px_100px_rgba(0,0,0,0.1)] backdrop-blur-3xl pointer-events-auto animate-in zoom-in-95 fade-in slide-in-from-bottom-12 duration-700">
+              <div className="flex items-center justify-between mb-16">
                 <div>
-                  <h2
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 700,
-                      letterSpacing: "-0.03em",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    How do you want to proceed?
-                  </h2>
-                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
-                    Choose your experience below.
-                  </p>
+                  <h2 className="text-5xl font-black tracking-tighter mb-2">ACCESS.</h2>
+                  <p className="text-black/40 font-medium">Select your point of entry.</p>
                 </div>
                 <button
-                  id="close-overlay-btn"
                   onClick={() => setShowOverlay(false)}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    background: "transparent",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    transition: "border-color 0.15s, color 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor =
-                      "var(--border-hover)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
-                    (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
-                  }}
-                  aria-label="Close"
+                  className="w-14 h-14 rounded-full bg-black/5 border border-black/[0.05] flex items-center justify-center hover:bg-black hover:text-white transition-all"
                 >
-                  <X size={15} />
+                  <X size={24} />
                 </button>
               </div>
 
-              {/* Divider */}
-              <div
-                style={{
-                  height: 1,
-                  background: "var(--border)",
-                  margin: "20px 0 24px",
-                }}
-              />
-
-              {/* Option cards */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {/* My Profile */}
-                <OptionCard
-                  id="my-profile-btn"
-                  icon={
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 12,
-                        background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(91,33,182,0.25))",
-                        border: "1px solid rgba(124,58,237,0.4)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <User size={20} color="#a78bfa" />
-                    </div>
-                  }
-                  title="My Profile"
-                  subtitle="Connect your wallet to view and stamp your on-chain intelligence."
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button
                   onClick={() => router.push("/dashboard")}
-                />
+                  className="group flex flex-col p-10 rounded-[40px] bg-black text-white hover:bg-black/90 transition-all text-left"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-8 shrink-0">
+                    <User size={28} />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Portal</h3>
+                  <div className="mt-auto flex items-center gap-2 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+                    Claim Identity <ArrowRight size={14} />
+                  </div>
+                </button>
 
-                {/* Check a Profile */}
-                <OptionCard
-                  id="check-profile-btn"
-                  icon={
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 12,
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid var(--border-hover)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Search size={20} color="var(--text-secondary)" />
-                    </div>
-                  }
-                  title="Check a Profile"
-                  subtitle="Enter any wallet address to inspect their Silent Proof attestations."
+                <button
                   onClick={() => router.push("/profile")}
-                />
+                  className="group flex flex-col p-10 rounded-[40px] bg-white border border-black/[0.05] hover:border-black/20 transition-all text-left"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-black/5 flex items-center justify-center mb-8 shrink-0">
+                    <Search size={28} className="text-black/60" />
+                  </div>
+                  <h3 className="text-2xl font-black mb-2">Explorer</h3>
+                  <div className="mt-auto flex items-center gap-2 font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+                    Search Ledger <ArrowRight size={14} />
+                  </div>
+                </button>
               </div>
             </div>
           </div>
         </>
       )}
     </div>
-  );
-}
-
-// ── Option Card ───────────────────────────────────────────────────────────────
-
-function OptionCard({
-  id,
-  icon,
-  title,
-  subtitle,
-  onClick,
-}: {
-  id: string;
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <button
-      id={id}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        padding: "18px 20px",
-        background: hovered ? "rgba(124,58,237,0.06)" : "var(--bg-elevated)",
-        border: `1px solid ${hovered ? "rgba(124,58,237,0.3)" : "var(--border)"}`,
-        borderRadius: 14,
-        cursor: "pointer",
-        textAlign: "left",
-        width: "100%",
-        transition: "background 0.15s, border-color 0.15s, transform 0.1s",
-        transform: hovered ? "translateY(-1px)" : "translateY(0)",
-      }}
-    >
-      {icon}
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            letterSpacing: "-0.01em",
-            marginBottom: 3,
-          }}
-        >
-          {title}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-          {subtitle}
-        </div>
-      </div>
-      <ChevronRight
-        size={16}
-        color={hovered ? "var(--accent-light)" : "var(--text-muted)"}
-        style={{ flexShrink: 0, transition: "color 0.15s" }}
-      />
-    </button>
   );
 }
