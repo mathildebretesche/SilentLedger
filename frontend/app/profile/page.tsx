@@ -13,90 +13,13 @@ import {
   ArrowLeft,
   Search,
   Fingerprint,
-  GitBranch,
-  ExternalLink,
   Shield,
   AlertCircle,
 } from "lucide-react";
 import { isAddress } from "viem";
 
-import {
-  SILENT_LEDGER_ATTESTER_ABI,
-  ATTESTER_ADDRESS,
-  EAS_EXPLORER_URL,
-} from "@/lib/contracts";
-
-// ── Sub-components ─────────────────────────────────────────────────────────
-
-function SilentProofBadge({
-  attestation,
-  index,
-}: {
-  attestation: { uid: `0x${string}` };
-  index: number;
-}) {
-  const truncatedUid = `${attestation.uid.slice(0, 10)}…${attestation.uid.slice(-6)}`;
-  return (
-    <div className="proof-badge" style={{ animationDelay: `${index * 60}ms` }}>
-      <div className="pulse-dot flex-shrink-0" />
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 8,
-          background: "rgba(124,58,237,0.15)",
-          border: "1px solid rgba(124,58,237,0.3)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <GitBranch size={16} color="#a78bfa" />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-            GitHub Contribution Proof
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: "var(--green)",
-              background: "var(--green-dim)",
-              padding: "2px 8px",
-              borderRadius: 4,
-            }}
-          >
-            VERIFIED
-          </span>
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--text-muted)",
-            fontFamily: "monospace",
-            marginTop: 2,
-          }}
-        >
-          UID: {truncatedUid}
-        </div>
-      </div>
-      <a
-        href={`${EAS_EXPLORER_URL}/${attestation.uid}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--text-muted)", flexShrink: 0 }}
-        title="View on EAS Explorer"
-      >
-        <ExternalLink size={14} />
-      </a>
-    </div>
-  );
-}
-
-// ── Main Page ──────────────────────────────────────────────────────────────
+import { SILENT_LEDGER_ATTESTER_ABI, ATTESTER_ADDRESS } from "@/lib/contracts";
+import { SilentProofBadge } from "@/components/SilentProofBadge";
 
 export default function ProfilePage() {
   const [inputValue, setInputValue] = useState("");
@@ -176,7 +99,7 @@ export default function ProfilePage() {
           zIndex: 1,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div
             style={{
               width: 32,
@@ -200,7 +123,7 @@ export default function ProfilePage() {
           >
             Silent Ledger
           </span>
-        </div>
+        </Link>
 
         <Link
           href="/"
@@ -258,10 +181,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Search bar */}
-        <div
-          className="glass-card"
-          style={{ padding: "24px", marginBottom: 24 }}
-        >
+        <div className="glass-card" style={{ padding: "24px", marginBottom: 24 }}>
           <div style={{ display: "flex", gap: 10 }}>
             <div
               style={{

@@ -18,7 +18,7 @@
 
 import * as snarkjs from "snarkjs";
 
-import type { ZKProof } from "../../../services/ReclaimService";
+import type { ZKProof } from "../../services/ReclaimService";
 import type {
   DisclosureTier,
   GhostDisclosureAttestation,
@@ -218,7 +218,7 @@ export class DisclosureProver {
       throw new GhostProverError(
         "SCORE_NOT_IN_TIER",
         `Score ${reputationScore} hors du tier "${tier.label}" ` +
-          `[${tier.minScore}, ${tier.maxScore}[`
+        `[${tier.minScore}, ${tier.maxScore}[`
       );
     }
 

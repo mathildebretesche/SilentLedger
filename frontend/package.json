@@ -20,11 +20,13 @@
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
+    "snarkjs": "^0.7.6",
     "tailwind-merge": "^3.4.1",
     "viem": "^2.46.2",
     "wagmi": "^2.19.5"
   },
   "devDependencies": {
+    "@types/circomlibjs": "^0.1.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

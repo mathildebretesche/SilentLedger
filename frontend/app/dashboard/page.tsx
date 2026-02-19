@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SilentDashboard – page.tsx
+ * SilentDashboard – /dashboard
  * ─────────────────────────────────────────────────────────────────────────────
  * Dashboard principal de Silent Ledger.
  *
@@ -13,11 +13,10 @@
  *      via wagmi/writeContract, créant une attestation EAS permanente.
  *   5. Les attestations existantes sont lues via useReadContract (getAttestations).
  *   6. Chaque attestation s'affiche comme un "Silent Proof Badge".
- *
- * Design : Dark mode, glassmorphism, inspiré de Linear / Vercel.
  */
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
@@ -26,7 +25,6 @@ import {
   ExternalLink,
   Loader2,
   CheckCircle2,
-  AlertCircle,
   Fingerprint,
   Zap,
 } from "lucide-react";
@@ -35,165 +33,12 @@ import { initGitHubContributionsProof, type ZKProof } from "@/services/ReclaimSe
 import {
   SILENT_LEDGER_ATTESTER_ABI,
   ATTESTER_ADDRESS,
-  EAS_EXPLORER_URL,
 } from "@/lib/contracts";
-import type { OnChainAttestation } from "@/types/proof";
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-/**
- * Badge représentant une attestation EAS vérifiée.
- * Affiche le platformId tronqué, le score de réputation, et un lien EAS.
- */
-function SilentProofBadge({
-  attestation,
-  index,
-}: {
-  attestation: { uid: `0x${string}` };
-  index: number;
-}) {
-  const truncatedUid = `${attestation.uid.slice(0, 10)}…${attestation.uid.slice(-6)}`;
-
-  return (
-    <div
-      className="proof-badge"
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
-      {/* Status indicator */}
-      <div className="pulse-dot flex-shrink-0" />
-
-      {/* Icon */}
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 8,
-          background: "rgba(124,58,237,0.15)",
-          border: "1px solid rgba(124,58,237,0.3)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <GitBranch size={16} color="#a78bfa" />
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            GitHub Contribution Proof
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: "var(--green)",
-              background: "var(--green-dim)",
-              padding: "2px 8px",
-              borderRadius: 4,
-            }}
-          >
-            VERIFIED
-          </span>
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--text-muted)",
-            fontFamily: "monospace",
-            marginTop: 2,
-          }}
-        >
-          UID: {truncatedUid}
-        </div>
-      </div>
-
-      {/* EAS Explorer link */}
-      <a
-        href={`${EAS_EXPLORER_URL}/${attestation.uid}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          color: "var(--text-muted)",
-          transition: "color 0.15s ease",
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) =>
-          ((e.target as HTMLElement).style.color = "var(--accent-light)")
-        }
-        onMouseLeave={(e) =>
-          ((e.target as HTMLElement).style.color = "var(--text-muted)")
-        }
-        title="View on EAS Explorer"
-      >
-        <ExternalLink size={14} />
-      </a>
-    </div>
-  );
-}
-
-/** Skeleton placeholder pendant le chargement des attestations. */
-function BadgeSkeleton() {
-  return (
-    <div
-      style={{
-        height: 64,
-        borderRadius: 10,
-        border: "1px solid var(--border)",
-      }}
-      className="shimmer"
-    />
-  );
-}
-
-/** Message d'état de la transaction. */
-function TxStatus({
-  status,
-  message,
-}: {
-  status: "success" | "error" | "pending";
-  message: string;
-}) {
-  const iconMap = {
-    success: <CheckCircle2 size={14} color="var(--green)" />,
-    error: <AlertCircle size={14} color="#ef4444" />,
-    pending: <Loader2 size={14} className="animate-spin" color="var(--accent-light)" />,
-  };
-  const colorMap = {
-    success: "var(--green)",
-    error: "#ef4444",
-    pending: "var(--accent-light)",
-  };
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "10px 14px",
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        fontSize: 13,
-        color: colorMap[status],
-      }}
-    >
-      {iconMap[status]}
-      {message}
-    </div>
-  );
-}
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+import { SilentProofBadge } from "@/components/SilentProofBadge";
+import { BadgeSkeleton } from "@/components/BadgeSkeleton";
+import { TxStatus } from "@/components/TxStatus";
+import { StatRow } from "@/components/StatRow";
 
 export default function SilentDashboard() {
   const { address, isConnected } = useAccount();
@@ -212,7 +57,6 @@ export default function SilentDashboard() {
   } | null>(null);
 
   // ── On-chain data ─────────────────────────────────────────────────────────
-  // Lit les attestations existantes de l'utilisateur depuis le contrat.
   const {
     data: attestationUIDs,
     isLoading: isLoadingAttestations,
@@ -229,10 +73,7 @@ export default function SilentDashboard() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  /**
-   * Étape 1 : Lance le flux zkTLS Reclaim.
-   * Génère une session et affiche l'URL/QR code à l'utilisateur.
-   */
+  /** Étape 1 : Lance le flux zkTLS Reclaim. */
   const handleStampIntelligence = useCallback(async () => {
     if (!githubUsername.trim()) return;
     setIsGenerating(true);
@@ -243,9 +84,10 @@ export default function SilentDashboard() {
     try {
       const url = await initGitHubContributionsProof({
         githubUsername: githubUsername.trim(),
-        onProofReady: async (proof) => {
-          // La preuve est prête → affichage + préparation de la tx
-          setZkProof(proof);
+        onProofReady: async (result) => {
+          setZkProof(result.proof);
+          setPlatformId(result.platformId);
+          setReputationScore(result.reputationScore);
           setIsGenerating(false);
         },
         onError: (err) => {
@@ -263,10 +105,7 @@ export default function SilentDashboard() {
     }
   }, [githubUsername]);
 
-  /**
-   * Étape 2 : Soumet la preuve ZK on-chain via SilentLedgerAttester.submitProof().
-   * Nécessite que zkProof soit disponible (étape 1 complétée).
-   */
+  /** Étape 2 : Soumet la preuve ZK on-chain via SilentLedgerAttester.submitProof(). */
   const handleSubmitOnChain = useCallback(async () => {
     if (!zkProof || !platformId || reputationScore === null) return;
     setTxStatus({ status: "pending", message: "Signature de la transaction…" });
@@ -337,8 +176,7 @@ export default function SilentDashboard() {
           zIndex: 1,
         }}
       >
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div
             style={{
               width: 32,
@@ -362,14 +200,9 @@ export default function SilentDashboard() {
           >
             Silent Ledger
           </span>
-        </div>
+        </Link>
 
-        {/* Wallet connect */}
-        <ConnectButton
-          accountStatus="avatar"
-          chainStatus="icon"
-          showBalance={false}
-        />
+        <ConnectButton accountStatus="avatar" chainStatus="icon" showBalance={false} />
       </header>
 
       {/* ── Main content ────────────────────────────────────────────────── */}
@@ -387,10 +220,7 @@ export default function SilentDashboard() {
         {/* ── Hero card ───────────────────────────────────────────────── */}
         <div
           className="glass-card"
-          style={{
-            gridColumn: "1 / -1",
-            padding: "40px 40px 36px",
-          }}
+          style={{ gridColumn: "1 / -1", padding: "40px 40px 36px" }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
             <div
@@ -473,9 +303,7 @@ export default function SilentDashboard() {
                       placeholder="GitHub username…"
                       value={githubUsername}
                       onChange={(e) => setGithubUsername(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleStampIntelligence()
-                      }
+                      onKeyDown={(e) => e.key === "Enter" && handleStampIntelligence()}
                       style={{
                         flex: 1,
                         background: "transparent",
@@ -489,13 +317,10 @@ export default function SilentDashboard() {
                     />
                   </div>
 
-                  {/* Main CTA button */}
                   <button
                     className="btn-stamp"
                     onClick={handleStampIntelligence}
-                    disabled={
-                      !githubUsername.trim() || isGenerating || isTxPending
-                    }
+                    disabled={!githubUsername.trim() || isGenerating || isTxPending}
                     style={{ whiteSpace: "nowrap" }}
                     id="stamp-intelligence-btn"
                   >
@@ -530,8 +355,7 @@ export default function SilentDashboard() {
                         marginBottom: 10,
                       }}
                     >
-                      Ouvrez ce lien sur votre téléphone pour générer la preuve
-                      zkTLS :
+                      Ouvrez ce lien sur votre téléphone pour générer la preuve zkTLS :
                     </p>
                     <a
                       href={proofUrl}
@@ -549,9 +373,7 @@ export default function SilentDashboard() {
                       }}
                     >
                       <ExternalLink size={13} />
-                      {proofUrl.length > 60
-                        ? proofUrl.slice(0, 60) + "…"
-                        : proofUrl}
+                      {proofUrl.length > 60 ? proofUrl.slice(0, 60) + "…" : proofUrl}
                     </a>
                     <p
                       style={{
@@ -563,11 +385,7 @@ export default function SilentDashboard() {
                       En attente de la preuve ZK…
                       <Loader2
                         size={11}
-                        style={{
-                          display: "inline",
-                          marginLeft: 6,
-                          verticalAlign: "middle",
-                        }}
+                        style={{ display: "inline", marginLeft: 6, verticalAlign: "middle" }}
                         className="animate-spin"
                       />
                     </p>
@@ -587,27 +405,13 @@ export default function SilentDashboard() {
                       borderRadius: 10,
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <CheckCircle2 size={16} color="var(--green)" />
                       <div>
-                        <p
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "var(--text-primary)",
-                          }}
-                        >
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
                           Preuve ZK générée avec succès
                         </p>
-                        <p
-                          style={{ fontSize: 12, color: "var(--text-muted)" }}
-                        >
+                        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           Score: {reputationScore?.toString() ?? "—"} contributions
                         </p>
                       </div>
@@ -629,10 +433,7 @@ export default function SilentDashboard() {
 
                 {/* Tx status */}
                 {txStatus && (
-                  <TxStatus
-                    status={txStatus.status}
-                    message={txStatus.message}
-                  />
+                  <TxStatus status={txStatus.status} message={txStatus.message} />
                 )}
               </div>
             )}
@@ -654,23 +455,10 @@ export default function SilentDashboard() {
             Statistiques
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <StatRow
-              label="Silent Proofs"
-              value={attestations.length.toString()}
-              accent
-            />
-            <StatRow
-              label="Plateforme"
-              value={isConnected ? "Sepolia Testnet" : "—"}
-            />
-            <StatRow
-              label="Protocole ZK"
-              value="Reclaim zkTLS"
-            />
-            <StatRow
-              label="Ancrage"
-              value="EAS v1.3.0"
-            />
+            <StatRow label="Silent Proofs" value={attestations.length.toString()} accent />
+            <StatRow label="Plateforme" value={isConnected ? "Sepolia Testnet" : "—"} />
+            <StatRow label="Protocole ZK" value="Reclaim zkTLS" />
+            <StatRow label="Ancrage" value="EAS v1.3.0" />
           </div>
         </div>
 
@@ -695,10 +483,7 @@ export default function SilentDashboard() {
               ["3", "Preuve vérifiée on-chain (EAS)"],
               ["4", "Badge souverain et anonyme"],
             ].map(([step, text]) => (
-              <li
-                key={step}
-                style={{ display: "flex", alignItems: "center", gap: 10 }}
-              >
+              <li key={step} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span
                   style={{
                     width: 22,
@@ -717,9 +502,7 @@ export default function SilentDashboard() {
                 >
                   {step}
                 </span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  {text}
-                </span>
+                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{text}</span>
               </li>
             ))}
           </ol>
@@ -728,10 +511,7 @@ export default function SilentDashboard() {
         {/* ── Silent Proofs list ──────────────────────────────────────── */}
         <div
           className="glass-card"
-          style={{
-            gridColumn: "1 / -1",
-            padding: "28px 28px 24px",
-          }}
+          style={{ gridColumn: "1 / -1", padding: "28px 28px 24px" }}
         >
           <div
             style={{
@@ -782,9 +562,7 @@ export default function SilentDashboard() {
               Connectez votre wallet pour voir vos attestations.
             </p>
           ) : isLoadingAttestations ? (
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: 10 }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <BadgeSkeleton />
               <BadgeSkeleton />
             </div>
@@ -802,10 +580,8 @@ export default function SilentDashboard() {
                 color="var(--text-muted)"
                 style={{ margin: "0 auto 12px" }}
               />
-              <p
-                style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}
-              >
-                Aucune attestation pour l'instant.
+              <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>
+                Aucune attestation pour l&apos;instant.
                 <br />
                 <span style={{ color: "var(--text-secondary)" }}>
                   Stampez votre première contribution GitHub ci-dessus.
@@ -815,49 +591,12 @@ export default function SilentDashboard() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {attestations.map((uid, i) => (
-                <SilentProofBadge
-                  key={uid}
-                  attestation={{ uid }}
-                  index={i}
-                />
+                <SilentProofBadge key={uid} attestation={{ uid }} index={i} />
               ))}
             </div>
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-// ─── Tiny helpers ─────────────────────────────────────────────────────────────
-
-function StatRow({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{label}</span>
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: accent ? "var(--accent-light)" : "var(--text-primary)",
-        }}
-      >
-        {value}
-      </span>
     </div>
   );
 }
