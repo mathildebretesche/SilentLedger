@@ -1,25 +1,41 @@
-# ── Environment variables (NEVER commit these) ──────────────────────────────
+# ── Environment & Secrets (NEVER commit these) ──────────────────────────────
 .env
 .env.local
 .env.*.local
 .env.development
 .env.production
 .env.test
+contracts/.env
+*.backup
+*.pem
 
-# ── Dependencies ─────────────────────────────────────────────────────────────
+# ── Foundry / Forge ───────────────────────────────────────────────────────────
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
 node_modules/
-
-# ── Next.js ──────────────────────────────────────────────────────────────────
-.next/
-out/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel/
+frontend/coverage/
 
 # ── Build outputs ─────────────────────────────────────────────────────────────
 dist/
 build/
-
-# ── Foundry / Solidity ────────────────────────────────────────────────────────
-cache/
 out/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── TypeScript ────────────────────────────────────────────────────────────────
+*.tsbuildinfo
+frontend/next-env.d.ts
 
 # ── OS & editor ───────────────────────────────────────────────────────────────
 .DS_Store

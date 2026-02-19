@@ -13,3 +13,6 @@ remappings = [
 
 [profile.default.fuzz]
 runs = 256
+
+[rpc_endpoints]
+sepolia = "${SEPOLIA_RPC_URL}"
