@@ -33,7 +33,7 @@ contract DeployScript is Script {
 
     // ── Reclaim Protocol verifier default (Sepolia) ─────────────────────────
     address constant RECLAIM_DEFAULT =
-        0xf90085f5FD1A3BeB8678623409B3811e4b50b8f3;
+        0xAe94FB09711e1c6B057853a515483792d8e474d0;
 
     function run() external {
         // Allow override via env var; fall back to the known Sepolia address.
