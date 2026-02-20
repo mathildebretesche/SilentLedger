@@ -29,10 +29,13 @@ import { initGitHubProof, type ZKProof } from "@/services/ReclaimService";
 import {
   SILENT_LEDGER_ATTESTER_ABI,
   ATTESTER_ADDRESS,
+  CERTIFICATION_SBT_ABI,
+  SBT_ADDRESS,
 } from "@/lib/contracts";
 
 import { SilentProofBadge } from "@/components/SilentProofBadge";
 import { BadgeSkeleton } from "@/components/BadgeSkeleton";
+import { SBTBadge } from "@/components/SBTBadge";
 import { TxStatus } from "@/components/TxStatus";
 import { StatRow } from "@/components/StatRow";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
@@ -64,10 +67,32 @@ export default function SilentDashboard() {
     abi: SILENT_LEDGER_ATTESTER_ABI,
     functionName: "getAttestations",
     args: address ? [address] : undefined,
-    query: { enabled: isConnected && !!address },
+    query: {
+      enabled: isConnected && !!address,
+      staleTime: 0,
+      refetchOnMount: "always"
+    },
   });
 
   const attestations = (attestationUIDs as `0x${string}`[] | undefined) ?? [];
+
+  // Lecture des SBT On-chain
+  const {
+    data: sbtIdsData,
+    isLoading: isLoadingSbts,
+  } = useReadContract({
+    address: SBT_ADDRESS,
+    abi: CERTIFICATION_SBT_ABI,
+    functionName: "getTokensOfOwner",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: isConnected && !!address,
+      staleTime: 0,
+      refetchOnMount: "always"
+    },
+  });
+
+  const sbtIds = (sbtIdsData as bigint[] | undefined) ?? [];
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -583,6 +608,69 @@ export default function SilentDashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {attestations.map((uid, i) => (
                 <SilentProofBadge key={uid} attestation={{ uid }} index={i} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── My Credentials (SBTs) ─────────────────────────────────── */}
+        <div
+          className="glass-card"
+          style={{ gridColumn: "1 / -1", padding: "28px 28px 24px", marginTop: "24px" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 20,
+            }}
+          >
+            <h2
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                color: "var(--text-muted)",
+              }}
+            >
+              My Soulbound Credentials
+            </h2>
+          </div>
+
+          {!isConnected ? (
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text-muted)",
+                textAlign: "center",
+                padding: "24px 0",
+              }}
+            >
+              Connectez votre wallet pour voir vos badges SBT.
+            </p>
+          ) : isLoadingSbts ? (
+            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
+              {/* Skeleton for SBT */}
+              <div style={{ width: 140, height: 140, borderRadius: 16, background: "rgba(255,255,255,0.05)" }} className="animate-pulse" />
+              <div style={{ width: 140, height: 140, borderRadius: 16, background: "rgba(255,255,255,0.05)" }} className="animate-pulse" />
+            </div>
+          ) : sbtIds.length === 0 ? (
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text-muted)",
+                textAlign: "center",
+                padding: "24px 0",
+              }}
+            >
+              Aucun badge Soulbound pour l'instant.
+            </p>
+          ) : (
+            <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", justifyContent: "flex-start", padding: "10px 0" }}>
+              {sbtIds.map((id) => (
+                <SBTBadge key={id.toString()} tokenId={id} />
               ))}
             </div>
           )}

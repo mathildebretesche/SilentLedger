@@ -38,7 +38,11 @@ export default function EnterPage() {
       abi: SILENT_LEDGER_ATTESTER_ABI,
       functionName: "getAttestations",
       args: address ? [address] : undefined,
-      query: { enabled: isConnected && !!address },
+      query: {
+        enabled: isConnected && !!address,
+        staleTime: 0,
+        refetchOnMount: "always"
+      },
     });
 
   // Routing dès que les données sont prêtes
@@ -48,7 +52,9 @@ export default function EnterPage() {
     const count =
       (attestationUIDs as `0x${string}`[] | undefined)?.length ?? 0;
 
-    if (count > 0) {
+    const DEV_BYPASS_ONBOARDING = true; // Si true, on force à aller sur l'onboarding pour test
+
+    if (count > 0 && !DEV_BYPASS_ONBOARDING) {
       router.replace("/dashboard");
     } else {
       router.replace("/onboarding");

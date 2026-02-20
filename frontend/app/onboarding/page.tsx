@@ -14,7 +14,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
   Shield,
@@ -49,6 +49,32 @@ export default function OnboardingPage() {
       router.replace("/enter");
     }
   }, [isConnected, router]);
+
+  // Lecture des attestations on-chain
+  const { data: attestationUIDs, isLoading: isLoadingAttestations } =
+    useReadContract({
+      address: ATTESTER_ADDRESS,
+      abi: SILENT_LEDGER_ATTESTER_ABI,
+      functionName: "getAttestations",
+      args: address ? [address] : undefined,
+      query: {
+        enabled: isConnected && !!address,
+        staleTime: 0,
+        refetchOnMount: "always"
+      },
+    });
+
+  // ── Mode développement ───────────────────────────────────────────────────
+  const DEV_BYPASS_ONBOARDING = true; // Si true, on force à rester sur l'onboarding pour test
+
+  // Redirection automatique si des attestations existent déjà
+  useEffect(() => {
+    if (!isConnected || isLoadingAttestations || DEV_BYPASS_ONBOARDING) return;
+    const count = (attestationUIDs as `0x${string}`[] | undefined)?.length ?? 0;
+    if (count > 0) {
+      router.replace("/dashboard");
+    }
+  }, [isConnected, isLoadingAttestations, attestationUIDs, router]);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -201,8 +227,8 @@ export default function OnboardingPage() {
                       activeStep > step.id
                         ? "var(--green, #22c55e)"
                         : activeStep === step.id
-                        ? "var(--accent)"
-                        : "rgba(255,255,255,0.1)",
+                          ? "var(--accent)"
+                          : "rgba(255,255,255,0.1)",
                     color:
                       activeStep >= step.id ? "white" : "var(--text-muted)",
                     border:
@@ -256,7 +282,46 @@ export default function OnboardingPage() {
               <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
                 Connectez votre portefeuille pour commencer l&apos;onboarding.
               </p>
-              <ConnectButton />
+              <ConnectButton.Custom>
+                {({
+                  account,
+                  chain,
+                  openConnectModal,
+                  mounted,
+                }) => {
+                  const ready = mounted;
+                  const connected = ready && account && chain;
+
+                  return (
+                    <div
+                      {...(!ready && {
+                        "aria-hidden": true,
+                        style: {
+                          opacity: 0,
+                          pointerEvents: "none",
+                          userSelect: "none",
+                        },
+                      })}
+                    >
+                      {(() => {
+                        if (!connected) {
+                          return (
+                            <button
+                              onClick={openConnectModal}
+                              type="button"
+                              className="btn-stamp"
+                              style={{ padding: "12px 24px", fontSize: 14 }}
+                            >
+                              Connecter mon portefeuille
+                            </button>
+                          );
+                        }
+                        return null; // The outer condition (!isConnected) handles the connected state
+                      })()}
+                    </div>
+                  );
+                }}
+              </ConnectButton.Custom>
             </div>
           ) : redirecting ? (
             /* Redirection en cours */
