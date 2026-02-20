@@ -63,25 +63,15 @@ export default function ProfilePage() {
     args: [tokenId],
   }));
 
-  const { data: sbtData, isLoading: isLoadingSBTDetails } = useReadContracts({
+  const { isLoading: isLoadingSBTDetails } = useReadContracts({
     contracts: sbtCalls ?? [],
     query: { enabled: !!sbtTokenIds && sbtTokenIds.length > 0 },
   });
 
   const attestations = (attestationUIDs as `0x${string}`[] | undefined) ?? [];
-  
-  // Define a type for the certification result
-  type CertificationResult = {
-    competenceName: string;
-    level: number;
-    acquisitionDate: bigint;
-    examScore: number;
-    proofOfWorkURL: string;
-    certHash: `0x${string}`;
-    studentId: `0x${string}`;
-  };
 
-  const sbts = sbtData?.map((result) => result.status === "success" ? (result.result as CertificationResult) : null).filter(Boolean) ?? [];
+
+
 
   const isLoading = isLoadingAttestations || isLoadingSBTs || isLoadingSBTDetails;
   const isFetching = isFetchingAttestations;

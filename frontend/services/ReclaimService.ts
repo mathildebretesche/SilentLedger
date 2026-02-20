@@ -120,7 +120,7 @@ export async function initGitHubContributionsProof(
   if (!APP_ID || !APP_SECRET || !GITHUB_PROVIDER_ID) {
     throw new Error(
       "Missing Reclaim env vars. Check NEXT_PUBLIC_RECLAIM_APP_ID, " +
-        "NEXT_PUBLIC_RECLAIM_APP_SECRET, NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID"
+      "NEXT_PUBLIC_RECLAIM_APP_SECRET, NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID"
     );
   }
 
@@ -133,9 +133,11 @@ export async function initGitHubContributionsProof(
 
   // Contexte additionnel passé dans la preuve pour lier le claim à un username.
   // Ce contexte est signé par l'attestor → impossibilité de le falsifier.
-  proofRequest.setAppCallbackUrl(
-    `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/reclaim-callback`
-  );
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+
+  proofRequest.setAppCallbackUrl(`${appUrl}/api/reclaim-callback`);
 
   proofRequest.addContext(
     `github_user`,

@@ -38,7 +38,7 @@ import { BadgeSkeleton } from "@/components/BadgeSkeleton";
 import { TxStatus } from "@/components/TxStatus";
 import { StatRow } from "@/components/StatRow";
 import { Wallet } from "lucide-react";
-import { keccak256, toBytes, encodePacked } from "viem";
+import { keccak256, toBytes } from "viem";
 
 export default function SilentDashboard() {
   const { address, isConnected } = useAccount();
@@ -162,11 +162,11 @@ export default function SilentDashboard() {
       // Si ce n'est pas le cas, la tx revertira "InvalidSignature".
       // On va juste logguer un warning.
       console.warn("Assuming connected wallet IS the Oracle Signer for testing purposes.");
-      
+
       // On demande à l'utilisateur de signer (simulation que c'est l'oracle)
       // Hash struct EIP-712 like (mais simplifié dans le contrat)
       // Hash: keccak256(recipient, hash(competence), level, score, hash(url), studentId, deadline)
-      
+
       /*
         abi.encode(
             data.recipient,
@@ -178,19 +178,19 @@ export default function SilentDashboard() {
             data.deadline
         )
       */
-      
+
       // On ne peut pas facilement signer "en tant qu'oracle" depuis le frontend si l'oracle est un backend.
       // Mais pour la démo, on va tenter d'appeler submitOracleProof avec une signature vide (ça failera)
       // OU on ajoute un bouton "Simuler Oracle" qui fait juste un appel direct si on est owner.
       // Changeons d'approche : on trigger la fonction, et on met une signature dummy 0x... 
       // Le contrat va revert "InvalidSignature".
-      
+
       // MIEUX: On utilise une signature fictive et on espère que le contrat de test n'a pas activé la vérif strique ?
       // Non, le code Solidity a `if (recovered != oracleSigner) revert`.
-      
+
       // On va juste mettre un message explicatif dans l'UI "Demo: Oracle Signature Requires Backend".
       // Ou on mocke l'appel contractuel directement si on a deployé en local avec une clé connue.
-      
+
       // Pour l'instant, faisons l'appel avec une signature bidon pour montrer l'interaction contrat.
       const dummySignature = "0x" + "00".repeat(65);
 
@@ -199,10 +199,10 @@ export default function SilentDashboard() {
         abi: SILENT_LEDGER_ATTESTER_ABI,
         functionName: "submitOracleProof",
         args: [dummySignature as `0x${string}`, {
-             ...mockData,
-             level: mockData.level,
-             examScore: mockData.examScore, 
-             deadline: mockData.deadline
+          ...mockData,
+          level: mockData.level,
+          examScore: mockData.examScore,
+          deadline: mockData.deadline
         }],
       });
 
@@ -213,7 +213,7 @@ export default function SilentDashboard() {
       await refetchAttestations();
 
     } catch (err) {
-       // C'est normal que ça fail si on n'a pas la bonne signature
+      // C'est normal que ça fail si on n'a pas la bonne signature
       setTxStatus({
         status: "error",
         message: err instanceof Error ? err.message : "Oracle Verification Failed",
@@ -479,28 +479,28 @@ export default function SilentDashboard() {
 
                 {/* ── Oracle Section ────────────────────────────────────────── */}
                 <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1px solid var(--border)" }}>
-                   <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                     <Wallet size={18} />
-                     Verify Wallet History
-                   </h3>
-                   <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-                     Analyze your on-chain footprint (DeFi, DAO, NFT) to generate a &quot;DeFi Power User&quot; badge via our Oracle.
-                   </p>
-                   <button
-                     className="btn-stamp"
-                     onClick={handleOracleVerification}
-                     disabled={isTxPending}
-                     style={{ 
-                       background: "linear-gradient(135deg, #10b981, #059669)", // Greenish for Oracle
-                       fontSize: 13, 
-                       padding: "10px 18px" 
-                     }}
-                   >
-                      Verify with Oracle →
-                   </button>
-                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, fontStyle: "italic" }}>
-                     (Requires Backend Signature - will revert in demo if not configured)
-                   </p>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Wallet size={18} />
+                    Verify Wallet History
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                    Analyze your on-chain footprint (DeFi, DAO, NFT) to generate a &quot;DeFi Power User&quot; badge via our Oracle.
+                  </p>
+                  <button
+                    className="btn-stamp"
+                    onClick={handleOracleVerification}
+                    disabled={isTxPending}
+                    style={{
+                      background: "linear-gradient(135deg, #10b981, #059669)", // Greenish for Oracle
+                      fontSize: 13,
+                      padding: "10px 18px"
+                    }}
+                  >
+                    Verify with Oracle →
+                  </button>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, fontStyle: "italic" }}>
+                    (Requires Backend Signature - will revert in demo if not configured)
+                  </p>
                 </div>
 
 
