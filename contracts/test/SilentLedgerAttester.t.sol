@@ -1,9 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Test } from "forge-std/Test.sol";
-import { AttestationRequest } from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
-import { SilentLedgerAttester, ReclaimProof, ClaimInfo, SignedClaim, CompleteClaimData } from "../src/SilentLedgerAttester.sol";
+import {Test} from "forge-std/Test.sol";
+import {
+    AttestationRequest
+} from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
+import {
+    SilentLedgerAttester,
+    ReclaimProof,
+    ClaimInfo,
+    SignedClaim,
+    CompleteClaimData
+} from "../src/SilentLedgerAttester.sol";
+import {CertificationSBT} from "../src/CertificationSBT.sol";
 
 // ─── Mock Contracts ───────────────────────────────────────────────────────────
 
@@ -19,7 +28,11 @@ contract MockEAS {
 contract MockSchemaRegistry {
     bytes32 private constant SCHEMA_UID = keccak256("silent-ledger-schema-v1");
 
-    function register(string calldata, address, bool) external pure returns (bytes32) {
+    function register(
+        string calldata,
+        address,
+        bool
+    ) external pure returns (bytes32) {
         return SCHEMA_UID;
     }
 }
@@ -27,7 +40,9 @@ contract MockSchemaRegistry {
 contract MockReclaimVerifier {
     bool private _shouldRevert;
 
-    function setShouldRevert(bool v) external { _shouldRevert = v; }
+    function setShouldRevert(bool v) external {
+        _shouldRevert = v;
+    }
 
     function verifyProof(ReclaimProof memory) external view {
         if (_shouldRevert) revert("InvalidProof");
@@ -44,16 +59,27 @@ contract SilentLedgerAttesterTest is Test {
 
     address internal alice = makeAddr("alice");
 
+    CertificationSBT public sbt;
+
     function setUp() public {
         mockEAS = new MockEAS();
         mockRegistry = new MockSchemaRegistry();
         mockReclaim = new MockReclaimVerifier();
 
+        // 1. Deploy SBT with 'this' as temporary issuer
+        sbt = new CertificationSBT(address(this));
+
+        // 2. Deploy Attester
         attester = new SilentLedgerAttester(
             address(mockEAS),
             address(mockRegistry),
-            address(mockReclaim)
+            address(mockReclaim),
+            address(this), // mock oracle
+            address(sbt)
         );
+
+        // 3. Set Attester as SBT issuer
+        sbt.setIssuer(address(attester));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -62,28 +88,33 @@ contract SilentLedgerAttesterTest is Test {
         bytes[] memory sigs = new bytes[](1);
         sigs[0] = hex"deadbeef";
 
-        return ReclaimProof({
-            claimInfo: ClaimInfo({
-                provider: "http",
-                parameters: "https://github.com/alice",
-                context: '{"extractedParameters":{"contributions":"420"}}'
-            }),
-            signedClaim: SignedClaim({
-                claim: CompleteClaimData({
-                    identifier: keccak256("claim-id"),
-                    owner: address(0x1),
-                    timestampS: uint32(block.timestamp),
-                    epoch: 1
+        return
+            ReclaimProof({
+                claimInfo: ClaimInfo({
+                    provider: "http",
+                    parameters: "https://github.com/alice",
+                    context: '{"extractedParameters":{"contributions":"420"}}'
                 }),
-                signatures: sigs
-            })
-        });
+                signedClaim: SignedClaim({
+                    claim: CompleteClaimData({
+                        identifier: keccak256("claim-id"),
+                        owner: address(0x1),
+                        timestampS: uint32(block.timestamp),
+                        epoch: 1
+                    }),
+                    signatures: sigs
+                })
+            });
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────
 
     function test_SchemaRegisteredOnDeploy() public view {
-        assertNotEq(attester.schemaUID(), bytes32(0), "Schema UID doit etre non-zero");
+        assertNotEq(
+            attester.schemaUID(),
+            bytes32(0),
+            "Schema UID doit etre non-zero"
+        );
     }
 
     function test_SubmitProof_Success() public {
@@ -105,7 +136,11 @@ contract SilentLedgerAttesterTest is Test {
 
         vm.prank(alice);
         vm.expectEmit(true, true, false, false, address(attester));
-        emit SilentLedgerAttester.ProofSubmitted(alice, platformId, bytes32(uint256(1)));
+        emit SilentLedgerAttester.ProofSubmitted(
+            alice,
+            platformId,
+            bytes32(uint256(1))
+        );
 
         attester.submitProof(_makeProof(), platformId, 100);
     }

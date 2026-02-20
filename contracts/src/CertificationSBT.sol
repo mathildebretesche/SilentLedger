@@ -15,20 +15,26 @@ pragma solidity ^0.8.24;
 //   5. The owner or issuer may revoke (burn) a token at any time.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { ERC721 }            from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { ERC721URIStorage }  from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import { Ownable }           from "@openzeppelin/contracts/access/Ownable.sol";
-import { Strings }           from "@openzeppelin/contracts/utils/Strings.sol";
-import { Base64 }            from "@openzeppelin/contracts/utils/Base64.sol";
-import { IERC165 }           from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { IERC5192 }          from "./IERC5192.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {
+    ERC721URIStorage
+} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC5192} from "./IERC5192.sol";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data structures
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// @dev Level enum stored as uint8 on-chain.
-enum CertLevel { Beginner, Intermediate, Expert }
+enum CertLevel {
+    Beginner,
+    Intermediate,
+    Expert
+}
 
 /**
  * @dev Full metadata stored on-chain for each token.
@@ -36,13 +42,13 @@ enum CertLevel { Beginner, Intermediate, Expert }
  *      Rich JSON metadata is generated on-the-fly in tokenURI().
  */
 struct Certification {
-    string    competenceName;  // e.g. "Smart Contract Security"
-    CertLevel level;           // Beginner / Intermediate / Expert
-    uint64    acquisitionDate; // block.timestamp at mint
-    uint32    examScore;       // 0–100
-    string    proofOfWorkURL;  // GitHub URL or IPFS CID
-    bytes32   certHash;        // keccak256(competenceName · studentId · acquisitionDate)
-    bytes32   studentId;       // keccak256 of student identifier (pseudonymised)
+    string competenceName; // e.g. "Smart Contract Security"
+    CertLevel level; // Beginner / Intermediate / Expert
+    uint64 acquisitionDate; // block.timestamp at mint
+    uint32 examScore; // 0–100
+    string proofOfWorkURL; // GitHub URL or IPFS CID
+    bytes32 certHash; // keccak256(competenceName · studentId · acquisitionDate)
+    bytes32 studentId; // keccak256 of student identifier (pseudonymised)
 }
 
 /**
@@ -50,12 +56,12 @@ struct Certification {
  *      Kept separate from Certification to avoid stack-too-deep during minting.
  */
 struct CertificationParams {
-    address   recipient;
-    string    competenceName;
+    address recipient;
+    string competenceName;
     CertLevel level;
-    uint32    examScore;
-    string    proofOfWorkURL;
-    bytes32   studentId;       // keccak256 of student identifier
+    uint32 examScore;
+    string proofOfWorkURL;
+    bytes32 studentId; // keccak256 of student identifier
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,7 +105,7 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     event CertificationIssued(
         address indexed recipient,
         uint256 indexed tokenId,
-        bytes32         certHash
+        bytes32 certHash
     );
 
     event CertificationRevoked(uint256 indexed tokenId);
@@ -132,10 +138,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      * @param _issuer  Address of the logic contract (or trusted EOA) that
      *                 validates proofs and calls mint().
      */
-    constructor(address _issuer)
-        ERC721("Silent Ledger Certification", "SLC")
-        Ownable(msg.sender)
-    {
+    constructor(
+        address _issuer
+    ) ERC721("Silent Ledger Certification", "SLC") Ownable(msg.sender) {
         issuer = _issuer;
     }
 
@@ -151,11 +156,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      * @param  params  CertificationParams struct with all certification data.
      * @return tokenId The id of the newly minted token.
      */
-    function mint(CertificationParams calldata params)
-        external
-        onlyIssuer
-        returns (uint256 tokenId)
-    {
+    function mint(
+        CertificationParams calldata params
+    ) external onlyIssuer returns (uint256 tokenId) {
         if (params.examScore > 100) revert ScoreOutOfRange(params.examScore);
 
         tokenId = _nextTokenId++;
@@ -171,13 +174,13 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
 
         // Store metadata on-chain.
         _certifications[tokenId] = Certification({
-            competenceName:  params.competenceName,
-            level:           params.level,
+            competenceName: params.competenceName,
+            level: params.level,
             acquisitionDate: uint64(block.timestamp),
-            examScore:       params.examScore,
-            proofOfWorkURL:  params.proofOfWorkURL,
-            certHash:        certHash,
-            studentId:       params.studentId
+            examScore: params.examScore,
+            proofOfWorkURL: params.proofOfWorkURL,
+            certHash: certHash,
+            studentId: params.studentId
         });
 
         // Mint (calls _update internally; from == address(0) → allowed).
@@ -199,13 +202,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      * @inheritdoc IERC5192
      * @dev Always returns true — all tokens are permanently locked.
      */
-    function locked(uint256 tokenId)
-        external
-        view
-        override
-        tokenExists(tokenId)
-        returns (bool)
-    {
+    function locked(
+        uint256 tokenId
+    ) external view override tokenExists(tokenId) returns (bool) {
         return true;
     }
 
@@ -214,6 +213,15 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      *      Reverts on any transfer that is not a mint (from == address(0))
      *      or a burn (to == address(0)).
      */
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal virtual override returns (address) {
+        address from = _ownerOf(tokenId);
+        if (from != address(0) && to != address(0)) {
+            revert SoulboundTransferBlocked(tokenId);
+        }
         return super._update(to, tokenId, auth);
     }
 
@@ -222,20 +230,23 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      *         We only support minting (from=0) and burning (to=0) in this contract's context
      *         as transfers are blocked.
      */
-    function _increaseBalance(address account, uint128 value) internal override {
+    function _increaseBalance(
+        address account,
+        uint128 value
+    ) internal override {
         super._increaseBalance(account, value);
     }
-    
-    // We override mint/burn logic in _update (already done above), 
+
+    // We override mint/burn logic in _update (already done above),
     // but for enumeration we need to hook into the state changes.
     // Actually, distinct mint and burn functions in this contract make it easier to just update the mapping there
     // OR verify if we can override _update to handle the mapping.
     // Since _update is internal, we can append logic.
     // But modifying _update signature is not possible.
-    // Let's just update the mapping in mint() and revoke(). 
+    // Let's just update the mapping in mint() and revoke().
     // It is safer and cleaner than overriding _update which handles approvals etc.
     // WAIT: _update is called by _safeMint.
-    
+
     // Let's add it to `mint` function where we know it's a mint.
     // And `revoke` where we know it's a burn.
 
@@ -249,41 +260,62 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      * @dev    Format: `data:application/json;base64,<base64(JSON)>`
      *         The JSON `image` field is `data:image/svg+xml;base64,<base64(SVG)>`.
      */
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        tokenExists(tokenId)
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 tokenId
+    ) public view override tokenExists(tokenId) returns (string memory) {
         Certification storage cert = _certifications[tokenId];
 
-        string memory svg     = _buildSVG(cert);
-        string memory imgData = string(abi.encodePacked(
-            "data:image/svg+xml;base64,",
-            Base64.encode(bytes(svg))
-        ));
+        string memory svg = _buildSVG(cert);
+        string memory imgData = string(
+            abi.encodePacked(
+                "data:image/svg+xml;base64,",
+                Base64.encode(bytes(svg))
+            )
+        );
 
-        string memory json = string(abi.encodePacked(
-            '{"name":"Silent Ledger Certification #', tokenId.toString(), '",'
-            '"description":"Soulbound certification issued by Silent Ledger. Non-transferable ERC-5192 badge.",'
-            '"image":"', imgData, '",'
-            '"attributes":['
-                '{"trait_type":"Competence","value":"',     cert.competenceName, '"},'
-                '{"trait_type":"Level","value":"',          _levelLabel(cert.level), '"},'
-                '{"trait_type":"Exam Score","value":',      uint256(cert.examScore).toString(), '},'
-                '{"display_type":"date","trait_type":"Acquisition Date","value":', uint256(cert.acquisitionDate).toString(), '},'
-                '{"trait_type":"Proof of Work","value":"',  cert.proofOfWorkURL, '"}'
-            '],'
-            '"cert_hash":"',  _bytes32ToHex(cert.certHash),  '",'
-            '"student_id":"', _bytes32ToHex(cert.studentId), '"'
-            '}'
-        ));
+        string memory json = string(
+            abi.encodePacked(
+                '{"name":"Silent Ledger Certification #',
+                tokenId.toString(),
+                '",'
+                '"description":"Soulbound certification issued by Silent Ledger. Non-transferable ERC-5192 badge.",'
+                '"image":"',
+                imgData,
+                '",'
+                '"attributes":['
+                '{"trait_type":"Competence","value":"',
+                cert.competenceName,
+                '"},'
+                '{"trait_type":"Level","value":"',
+                _levelLabel(cert.level),
+                '"},'
+                '{"trait_type":"Exam Score","value":',
+                uint256(cert.examScore).toString(),
+                "},"
+                '{"display_type":"date","trait_type":"Acquisition Date","value":',
+                uint256(cert.acquisitionDate).toString(),
+                "},"
+                '{"trait_type":"Proof of Work","value":"',
+                cert.proofOfWorkURL,
+                '"}'
+                "],"
+                '"cert_hash":"',
+                _bytes32ToHex(cert.certHash),
+                '",'
+                '"student_id":"',
+                _bytes32ToHex(cert.studentId),
+                '"'
+                "}"
+            )
+        );
 
-        return string(abi.encodePacked(
-            "data:application/json;base64,",
-            Base64.encode(bytes(json))
-        ));
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(bytes(json))
+                )
+            );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -302,7 +334,7 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
             revert NotAuthorizedToRevoke();
         }
         delete _certifications[tokenId];
-        
+
         // Remove from enumeration (swap and pop)
         address owner = _ownerOf(tokenId);
         uint256[] storage tokens = _ownerTokens[owner];
@@ -338,12 +370,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     /**
      * @notice Returns the full on-chain Certification struct for a token.
      */
-    function getCertification(uint256 tokenId)
-        external
-        view
-        tokenExists(tokenId)
-        returns (Certification memory)
-    {
+    function getCertification(
+        uint256 tokenId
+    ) external view tokenExists(tokenId) returns (Certification memory) {
         return _certifications[tokenId];
     }
 
@@ -357,7 +386,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     /**
      * @notice Returns all token IDs owned by `user`.
      */
-    function getTokensOfOwner(address user) external view returns (uint256[] memory) {
+    function getTokensOfOwner(
+        address user
+    ) external view returns (uint256[] memory) {
         return _ownerTokens[user];
     }
 
@@ -365,12 +396,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     // ERC-165
     // ─────────────────────────────────────────────────────────────────────────
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721URIStorage, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721URIStorage, IERC165) returns (bool) {
         return
             interfaceId == _INTERFACE_ID_ERC5192 ||
             super.supportsInterface(interfaceId);
@@ -380,8 +408,10 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     // Internal helpers
     // ─────────────────────────────────────────────────────────────────────────
 
-    function _levelLabel(CertLevel level) internal pure returns (string memory) {
-        if (level == CertLevel.Beginner)     return "Beginner";
+    function _levelLabel(
+        CertLevel level
+    ) internal pure returns (string memory) {
+        if (level == CertLevel.Beginner) return "Beginner";
         if (level == CertLevel.Intermediate) return "Intermediate";
         return "Expert";
     }
@@ -389,14 +419,16 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     /**
      * @dev Converts a bytes32 value to its 0x-prefixed hexadecimal string.
      */
-    function _bytes32ToHex(bytes32 value) internal pure returns (string memory) {
+    function _bytes32ToHex(
+        bytes32 value
+    ) internal pure returns (string memory) {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(66); // "0x" + 64 hex chars
         str[0] = "0";
         str[1] = "x";
         for (uint256 i = 0; i < 32; i++) {
-            str[2 + i * 2]     = alphabet[uint8(value[i] >> 4)];
-            str[3 + i * 2]     = alphabet[uint8(value[i] & 0x0f)];
+            str[2 + i * 2] = alphabet[uint8(value[i] >> 4)];
+            str[3 + i * 2] = alphabet[uint8(value[i] & 0x0f)];
         }
         return string(str);
     }
@@ -405,69 +437,87 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      * @dev Generates an on-chain SVG badge.
      *      Dark background · violet gradient border · competence name + level + score ring.
      */
-    function _buildSVG(Certification storage cert)
-        internal
-        view
-        returns (string memory)
-    {
+    function _buildSVG(
+        Certification storage cert
+    ) internal view returns (string memory) {
         string memory levelLabel = _levelLabel(cert.level);
-        string memory scoreStr   = uint256(cert.examScore).toString();
+        string memory scoreStr = uint256(cert.examScore).toString();
 
         // Score ring: circumference = 2π × 45 ≈ 283. Fill = score/100 × 283.
         // We approximate: strokeDasharray = "<fill> 283"
         // Using integer math: fill = (283 * score) / 100
         uint256 fill = (283 * uint256(cert.examScore)) / 100;
 
-        string memory levelColor =
-            cert.level == CertLevel.Expert       ? "#22c55e" :
-            cert.level == CertLevel.Intermediate ? "#f59e0b" :
-                                                   "#a78bfa";
+        string memory levelColor = cert.level == CertLevel.Expert
+            ? "#22c55e"
+            : cert.level == CertLevel.Intermediate
+                ? "#f59e0b"
+                : "#a78bfa";
 
-        return string(abi.encodePacked(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">',
-            '<defs>',
-              '<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">',
-                '<stop offset="0%" stop-color="#0f0f13"/>',
-                '<stop offset="100%" stop-color="#09090b"/>',
-              '</linearGradient>',
-              '<linearGradient id="border" x1="0" y1="0" x2="1" y2="1">',
-                '<stop offset="0%" stop-color="#7c3aed"/>',
-                '<stop offset="100%" stop-color="#5b21b6"/>',
-              '</linearGradient>',
-            '</defs>',
-            // Background
-            '<rect width="400" height="400" rx="20" fill="url(#bg)"/>',
-            // Gradient border
-            '<rect x="1" y="1" width="398" height="398" rx="19" fill="none" stroke="url(#border)" stroke-width="2"/>',
-            // Logo icon (simplified fingerprint rings)
-            '<circle cx="200" cy="80" r="28" fill="none" stroke="#7c3aed" stroke-width="3"/>',
-            '<circle cx="200" cy="80" r="18" fill="none" stroke="#7c3aed" stroke-width="2.5"/>',
-            '<circle cx="200" cy="80" r="8"  fill="#7c3aed"/>',
-            // Score ring (background track)
-            '<circle cx="200" cy="230" r="45" fill="none" stroke="#1c1c22" stroke-width="8"/>',
-            // Score ring (filled arc)
-            '<circle cx="200" cy="230" r="45" fill="none" stroke="', levelColor, '" stroke-width="8"',
-              ' stroke-dasharray="', fill.toString(), ' 283"',
-              ' stroke-dashoffset="70"',
-              ' stroke-linecap="round"',
-              ' transform="rotate(-90 200 230)"/>',
-            // Score text inside ring
-            '<text x="200" y="224" text-anchor="middle" font-family="Inter,sans-serif"',
-              ' font-size="22" font-weight="700" fill="#fafafa">', scoreStr, '</text>',
-            '<text x="200" y="244" text-anchor="middle" font-family="Inter,sans-serif"',
-              ' font-size="11" fill="#71717a">SCORE</text>',
-            // Competence name
-            '<text x="200" y="145" text-anchor="middle" font-family="Inter,sans-serif"',
-              ' font-size="16" font-weight="700" fill="#fafafa">', cert.competenceName, '</text>',
-            // Level badge
-            '<rect x="150" y="295" width="100" height="24" rx="12" fill="', levelColor, '" fill-opacity="0.15"/>',
-            '<rect x="150" y="295" width="100" height="24" rx="12" fill="none" stroke="', levelColor, '" stroke-width="1"/>',
-            '<text x="200" y="311" text-anchor="middle" font-family="Inter,sans-serif"',
-              ' font-size="11" font-weight="600" fill="', levelColor, '">', levelLabel, '</text>',
-            // Footer
-            '<text x="200" y="370" text-anchor="middle" font-family="Inter,sans-serif"',
-              ' font-size="10" fill="#52525b">Silent Ledger - ERC-5192 Soulbound</text>',
-            '</svg>'
-        ));
+        return
+            string(
+                abi.encodePacked(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">',
+                    "<defs>",
+                    '<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">',
+                    '<stop offset="0%" stop-color="#0f0f13"/>',
+                    '<stop offset="100%" stop-color="#09090b"/>',
+                    "</linearGradient>",
+                    '<linearGradient id="border" x1="0" y1="0" x2="1" y2="1">',
+                    '<stop offset="0%" stop-color="#7c3aed"/>',
+                    '<stop offset="100%" stop-color="#5b21b6"/>',
+                    "</linearGradient>",
+                    "</defs>",
+                    // Background
+                    '<rect width="400" height="400" rx="20" fill="url(#bg)"/>',
+                    // Gradient border
+                    '<rect x="1" y="1" width="398" height="398" rx="19" fill="none" stroke="url(#border)" stroke-width="2"/>',
+                    // Logo icon (simplified fingerprint rings)
+                    '<circle cx="200" cy="80" r="28" fill="none" stroke="#7c3aed" stroke-width="3"/>',
+                    '<circle cx="200" cy="80" r="18" fill="none" stroke="#7c3aed" stroke-width="2.5"/>',
+                    '<circle cx="200" cy="80" r="8"  fill="#7c3aed"/>',
+                    // Score ring (background track)
+                    '<circle cx="200" cy="230" r="45" fill="none" stroke="#1c1c22" stroke-width="8"/>',
+                    // Score ring (filled arc)
+                    '<circle cx="200" cy="230" r="45" fill="none" stroke="',
+                    levelColor,
+                    '" stroke-width="8"',
+                    ' stroke-dasharray="',
+                    fill.toString(),
+                    ' 283"',
+                    ' stroke-dashoffset="70"',
+                    ' stroke-linecap="round"',
+                    ' transform="rotate(-90 200 230)"/>',
+                    // Score text inside ring
+                    '<text x="200" y="224" text-anchor="middle" font-family="Inter,sans-serif"',
+                    ' font-size="22" font-weight="700" fill="#fafafa">',
+                    scoreStr,
+                    "</text>",
+                    '<text x="200" y="244" text-anchor="middle" font-family="Inter,sans-serif"',
+                    ' font-size="11" fill="#71717a">SCORE</text>',
+                    // Competence name
+                    '<text x="200" y="145" text-anchor="middle" font-family="Inter,sans-serif"',
+                    ' font-size="16" font-weight="700" fill="#fafafa">',
+                    cert.competenceName,
+                    "</text>",
+                    // Level badge
+                    '<rect x="150" y="295" width="100" height="24" rx="12" fill="',
+                    levelColor,
+                    '" fill-opacity="0.15"/>',
+                    '<rect x="150" y="295" width="100" height="24" rx="12" fill="none" stroke="',
+                    levelColor,
+                    '" stroke-width="1"/>',
+                    '<text x="200" y="311" text-anchor="middle" font-family="Inter,sans-serif"',
+                    ' font-size="11" font-weight="600" fill="',
+                    levelColor,
+                    '">',
+                    levelLabel,
+                    "</text>",
+                    // Footer
+                    '<text x="200" y="370" text-anchor="middle" font-family="Inter,sans-serif"',
+                    ' font-size="10" fill="#52525b">Silent Ledger - ERC-5192 Soulbound</text>',
+                    "</svg>"
+                )
+            );
     }
 }
