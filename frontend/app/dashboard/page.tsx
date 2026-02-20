@@ -16,16 +16,14 @@
  */
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Header } from "@/components/Header";
 import {
   Shield,
   GitBranch,
   ExternalLink,
   Loader2,
   CheckCircle2,
-  Fingerprint,
   Zap,
 } from "lucide-react";
 
@@ -251,47 +249,7 @@ export default function SilentDashboard() {
         }}
       />
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-          padding: "32px 0 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #7c3aed, #5b21b6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Fingerprint size={18} color="white" />
-          </div>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              color: "var(--text-primary)",
-            }}
-          >
-            Silent Ledger
-          </span>
-        </Link>
-
-        <ConnectButton accountStatus="avatar" chainStatus="icon" showBalance={false} />
-      </header>
+      <Header maxWidthClass="max-w-[900px]" />
 
       {/* ── Main content ────────────────────────────────────────────────── */}
       <main

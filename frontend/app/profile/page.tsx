@@ -7,12 +7,10 @@
  */
 
 import { useState } from "react";
-import Link from "next/link";
 import { useReadContract } from "wagmi";
+import { Header } from "@/components/Header";
 import {
-  ArrowLeft,
   Search,
-  Fingerprint,
   Shield,
   AlertCircle,
 } from "lucide-react";
@@ -133,63 +131,7 @@ export default function ProfilePage() {
         }}
       />
 
-      {/* Header */}
-      <header
-        style={{
-          maxWidth: 720,
-          margin: "0 auto",
-          padding: "32px 0 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #7c3aed, #5b21b6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Fingerprint size={18} color="white" />
-          </div>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              color: "var(--text-primary)",
-            }}
-          >
-            Silent Ledger
-          </span>
-        </Link>
-
-        <Link
-          href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--text-secondary)",
-            textDecoration: "none",
-            transition: "color 0.15s",
-          }}
-          id="back-to-home-link"
-        >
-          <ArrowLeft size={14} />
-          Back
-        </Link>
-      </header>
+      <Header maxWidthClass="max-w-[720px]" />
 
       {/* Main */}
       <main
