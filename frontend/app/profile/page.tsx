@@ -18,8 +18,14 @@ import {
 } from "lucide-react";
 import { isAddress } from "viem";
 
-import { SILENT_LEDGER_ATTESTER_ABI, ATTESTER_ADDRESS } from "@/lib/contracts";
+import {
+  SILENT_LEDGER_ATTESTER_ABI,
+  ATTESTER_ADDRESS,
+  CERTIFICATION_SBT_ABI,
+  SBT_ADDRESS,
+} from "@/lib/contracts"; // Updated imports
 import { SilentProofBadge } from "@/components/SilentProofBadge";
+import { useReadContracts } from "wagmi"; // Import useReadContracts for batch fetching
 
 export default function ProfilePage() {
   const [inputValue, setInputValue] = useState("");
@@ -29,8 +35,8 @@ export default function ProfilePage() {
   // Fetch attestations only when a valid address has been searched
   const {
     data: attestationUIDs,
-    isLoading,
-    isFetching,
+    isLoading: isLoadingAttestations,
+    isFetching: isFetchingAttestations,
   } = useReadContract({
     address: ATTESTER_ADDRESS,
     abi: SILENT_LEDGER_ATTESTER_ABI,
@@ -39,7 +45,48 @@ export default function ProfilePage() {
     query: { enabled: !!searchedAddress },
   });
 
+  // 2. Fetch SBT Token IDs
+  const {
+    data: sbtTokenIds,
+    isLoading: isLoadingSBTs,
+  } = useReadContract({
+    address: SBT_ADDRESS,
+    abi: CERTIFICATION_SBT_ABI,
+    functionName: "getTokensOfOwner",
+    args: searchedAddress ? [searchedAddress] : undefined,
+    query: { enabled: !!searchedAddress },
+  });
+
+  // 3. Batch Fetch SBT Details
+  const sbtCalls = sbtTokenIds?.map((tokenId: bigint) => ({
+    address: SBT_ADDRESS,
+    abi: CERTIFICATION_SBT_ABI,
+    functionName: "getCertification",
+    args: [tokenId],
+  }));
+
+  const { data: sbtData, isLoading: isLoadingSBTDetails } = useReadContracts({
+    contracts: sbtCalls ?? [],
+    query: { enabled: !!sbtTokenIds && sbtTokenIds.length > 0 },
+  });
+
   const attestations = (attestationUIDs as `0x${string}`[] | undefined) ?? [];
+  
+  // Define a type for the certification result
+  type CertificationResult = {
+    competenceName: string;
+    level: number;
+    acquisitionDate: bigint;
+    examScore: number;
+    proofOfWorkURL: string;
+    certHash: `0x${string}`;
+    studentId: `0x${string}`;
+  };
+
+  const sbts = sbtData?.map((result) => result.status === "success" ? (result.result as CertificationResult) : null).filter(Boolean) ?? [];
+
+  const isLoading = isLoadingAttestations || isLoadingSBTs || isLoadingSBTDetails;
+  const isFetching = isFetchingAttestations;
 
   const handleSearch = () => {
     const trimmed = inputValue.trim();

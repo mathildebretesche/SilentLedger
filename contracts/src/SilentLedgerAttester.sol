@@ -33,7 +33,13 @@ import {
 import {
     ISchemaResolver
 } from "@ethereum-attestation-service/eas-contracts/contracts/resolver/ISchemaResolver.sol";
+import {
+    ISchemaResolver
+} from "@ethereum-attestation-service/eas-contracts/contracts/resolver/ISchemaResolver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {CertificationSBT, CertificationParams, CertLevel} from "./CertificationSBT.sol";
 
 // ---------------------------------------------------------------------------
 // Reclaim Protocol interface (subset nécessaire)
@@ -76,7 +82,26 @@ interface IReclaim {
     function verifyProof(ReclaimProof memory proof) external view;
 }
 
+interface IReclaim {
+    function verifyProof(ReclaimProof memory proof) external view;
+}
+
 // ---------------------------------------------------------------------------
+// Structures Oracle
+// ---------------------------------------------------------------------------
+
+/**
+ * @dev Données signées par l'Oracle pour attester de l'historique wallet.
+ */
+struct OracleData {
+    address recipient;
+    string  competenceName;
+    uint8   level;          // 0=Beginner, 1=Intermediate, 2=Expert
+    uint32  examScore;
+    string  proofOfWorkURL; // ex: Analysis Report URL
+    bytes32 studentId;      // ex: keccak256(walletAddress) ou autre ID
+    uint64  deadline;       // Timestamp limite pour submit
+}
 // SilentLedgerAttester
 // ---------------------------------------------------------------------------
 
@@ -92,6 +117,10 @@ contract SilentLedgerAttester is Ownable {
     // ── Reclaim ────────────────────────────────────────────────────────────
     /// @notice Contrat Reclaim Protocol pour vérifier les preuves zkTLS.
     IReclaim public reclaimVerifier;
+
+    // ── Oracle & SBT ───────────────────────────────────────────────────────
+    address public oracleSigner;
+    CertificationSBT public sbtContract;
 
     // ── State ──────────────────────────────────────────────────────────────
     /// @notice Historique des attestations par utilisateur.
@@ -115,6 +144,9 @@ contract SilentLedgerAttester is Ownable {
     // ── Errors ─────────────────────────────────────────────────────────────
     error InvalidProofProvider(string provider);
     error SchemaNotRegistered();
+    error InvalidSignature();
+    error SignatureExpired();
+    error UnauthorizedOracle();
 
     // ── Constructor ────────────────────────────────────────────────────────
 
@@ -126,10 +158,14 @@ contract SilentLedgerAttester is Ownable {
     constructor(
         address _eas,
         address _schemaRegistry,
-        address _reclaimVerifier
+        address _reclaimVerifier,
+        address _oracleSigner,
+        address _sbtContract
     ) Ownable(msg.sender) {
         eas = IEAS(_eas);
         reclaimVerifier = IReclaim(_reclaimVerifier);
+        oracleSigner = _oracleSigner;
+        sbtContract = CertificationSBT(_sbtContract);
 
         // ── Enregistrement du schéma EAS ───────────────────────────────────
         // On tente d'enregistrer le schéma. S'il existe déjà ("AlreadyExists()"),
@@ -222,9 +258,95 @@ contract SilentLedgerAttester is Ownable {
 
         attestationUID = eas.attest(request);
 
-        // ── Step 5 : Stockage + Event ──────────────────────────────────────
+        // ── Step 5 : Mint SBT (Soulbound Token) ────────────────────────────
+        // Pour Reclaim, on génère des métadonnées par défaut basé sur le score.
+        // N.B: On caste reputationScore en uint32.
+        uint32 score32 = uint32(reputationScore > 100 ? 100 : reputationScore);
+        CertLevel level = score32 > 80 ? CertLevel.Expert : (score32 > 50 ? CertLevel.Intermediate : CertLevel.Beginner);
+
+        CertificationParams memory sbtParams = CertificationParams({
+            recipient:      msg.sender,
+            competenceName: "Open Source Contributor",
+            level:          level,
+            examScore:      score32,
+            proofOfWorkURL: "https://github.com", // Générique pour Reclaim
+            studentId:      platformId // On utilise le platformId hashé comme studentId
+        });
+
+        sbtContract.mint(sbtParams);
+
+        // ── Step 6 : Stockage + Event ──────────────────────────────────────
         userAttestations[msg.sender].push(attestationUID);
         emit ProofSubmitted(msg.sender, platformId, attestationUID);
+    }
+
+    /**
+     * @notice Soumet une preuve signée par l'Oracle (Backend) et crée une attestation + SBT.
+     * @param signature Signature ECDSA de l'Oracle sur le hash de OracleData.
+     * @param data      Les données attestées par l'Oracle.
+     */
+    function submitOracleProof(
+        bytes calldata signature,
+        OracleData calldata data
+    ) external returns (bytes32 attestationUID) {
+        if (block.timestamp > data.deadline) revert SignatureExpired();
+
+        // 1. Reconstuire le hash signé
+        bytes32 structHash = keccak256(abi.encode(
+            data.recipient,
+            keccak256(bytes(data.competenceName)),
+            data.level,
+            data.examScore,
+            keccak256(bytes(data.proofOfWorkURL)),
+            data.studentId,
+            data.deadline
+        ));
+
+        // Note: Idéalement utiliser EIP-712, mais ici simple hash préfixé eth_sign
+        bytes32 hash = MessageHashUtils.toEthSignedMessageHash(structHash);
+
+        // 2. Vérifier la signature
+        address recovered = ECDSA.recover(hash, signature);
+        if (recovered != oracleSigner) revert InvalidSignature();
+
+        // 3. Créer l'attestation EAS
+        if (schemaUID == bytes32(0)) revert SchemaNotRegistered();
+
+        bytes memory encodedData = abi.encode(
+            data.studentId, // platformId equivalent
+            uint256(data.examScore),
+            true // isVerified
+        );
+
+        AttestationRequest memory request = AttestationRequest({
+            schema: schemaUID,
+            data: AttestationRequestData({
+                recipient:      data.recipient, // Peut être msg.sender ou un tiers
+                expirationTime: 0,
+                revocable:      true,
+                refUID:         bytes32(0),
+                data:           encodedData,
+                value:          0
+            })
+        });
+
+        attestationUID = eas.attest(request);
+
+        // 4. Mint SBT
+        CertificationParams memory sbtParams = CertificationParams({
+            recipient:      data.recipient,
+            competenceName: data.competenceName,
+            level:          CertLevel(data.level),
+            examScore:      data.examScore,
+            proofOfWorkURL: data.proofOfWorkURL,
+            studentId:      data.studentId
+        });
+
+        sbtContract.mint(sbtParams);
+
+        // 5. Stockage
+        userAttestations[data.recipient].push(attestationUID);
+        emit ProofSubmitted(data.recipient, data.studentId, attestationUID);
     }
 
     // ── Views ──────────────────────────────────────────────────────────────
@@ -247,5 +369,13 @@ contract SilentLedgerAttester is Ownable {
      */
     function setReclaimVerifier(address _newVerifier) external onlyOwner {
         reclaimVerifier = IReclaim(_newVerifier);
+    }
+
+    function setOracleSigner(address _newOracle) external onlyOwner {
+        oracleSigner = _newOracle;
+    }
+
+    function setSBTContract(address _newSBT) external onlyOwner {
+        sbtContract = CertificationSBT(_newSBT);
     }
 }

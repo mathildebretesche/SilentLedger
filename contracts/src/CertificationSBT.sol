@@ -91,6 +91,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
     /// @dev Metadata stored per token.
     mapping(uint256 => Certification) private _certifications;
 
+    /// @dev Mapping owner => list of tokenIds (Simple Enumeration)
+    mapping(address => uint256[]) private _ownerTokens;
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     event CertificationIssued(
@@ -183,6 +186,9 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
         // ERC-5192: emit Locked on every mint.
         emit Locked(tokenId);
         emit CertificationIssued(params.recipient, tokenId, certHash);
+
+        // Update Enumeration
+        _ownerTokens[params.recipient].push(tokenId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -208,21 +214,30 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      *      Reverts on any transfer that is not a mint (from == address(0))
      *      or a burn (to == address(0)).
      */
-    function _update(address to, uint256 tokenId, address auth)
-        internal
-        override
-        returns (address)
-    {
-        address from = _ownerOf(tokenId);
-
-        // Allow mint (from == address(0)) and burn (to == address(0)).
-        // Block every other transfer.
-        if (from != address(0) && to != address(0)) {
-            revert SoulboundTransferBlocked(tokenId);
-        }
-
         return super._update(to, tokenId, auth);
     }
+
+    /**
+     * @notice Helper to add token to enumeration.
+     *         We only support minting (from=0) and burning (to=0) in this contract's context
+     *         as transfers are blocked.
+     */
+    function _increaseBalance(address account, uint128 value) internal override {
+        super._increaseBalance(account, value);
+    }
+    
+    // We override mint/burn logic in _update (already done above), 
+    // but for enumeration we need to hook into the state changes.
+    // Actually, distinct mint and burn functions in this contract make it easier to just update the mapping there
+    // OR verify if we can override _update to handle the mapping.
+    // Since _update is internal, we can append logic.
+    // But modifying _update signature is not possible.
+    // Let's just update the mapping in mint() and revoke(). 
+    // It is safer and cleaner than overriding _update which handles approvals etc.
+    // WAIT: _update is called by _safeMint.
+    
+    // Let's add it to `mint` function where we know it's a mint.
+    // And `revoke` where we know it's a burn.
 
     // ─────────────────────────────────────────────────────────────────────────
     // Token URI — on-chain dynamic SVG
@@ -287,6 +302,18 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
             revert NotAuthorizedToRevoke();
         }
         delete _certifications[tokenId];
+        
+        // Remove from enumeration (swap and pop)
+        address owner = _ownerOf(tokenId);
+        uint256[] storage tokens = _ownerTokens[owner];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == tokenId) {
+                tokens[i] = tokens[tokens.length - 1];
+                tokens.pop();
+                break;
+            }
+        }
+
         _burn(tokenId);
         emit CertificationRevoked(tokenId);
     }
@@ -325,6 +352,13 @@ contract CertificationSBT is ERC721URIStorage, IERC5192, Ownable {
      */
     function totalMinted() external view returns (uint256) {
         return _nextTokenId;
+    }
+
+    /**
+     * @notice Returns all token IDs owned by `user`.
+     */
+    function getTokensOfOwner(address user) external view returns (uint256[] memory) {
+        return _ownerTokens[user];
     }
 
     // ─────────────────────────────────────────────────────────────────────────
