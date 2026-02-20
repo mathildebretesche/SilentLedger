@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/Header";
 import { LaunchOverlay } from "@/components/LaunchOverlay";
-import { Background3D } from "@/components/Background3D";
+import { Footer } from "@/components/Footer";
 import {
   Fingerprint,
   ArrowRight,
@@ -51,11 +51,8 @@ export default function HomePage() {
   return (
     <div
       className="min-h-screen relative flex flex-col"
-      style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
+      style={{ color: "var(--text-primary)" }}
     >
-      {/* ── 3D Parallax Background ────────────────── */}
-      <Background3D scrollY={scrollY} />
-
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         {/* Large Blurred Blobs for extra depth */}
         <div
@@ -239,22 +236,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 px-8 py-20 max-w-7xl mx-auto w-full flex flex-col items-center gap-12 text-center">
-        <div className="w-12 h-12 glass-card border border-white/40 text-accent rounded-xl flex items-center justify-center">
-          <Fingerprint size={24} />
-        </div>
-        <div className="text-secondary text-xs font-bold uppercase tracking-[0.4em]">
-          The Future is Silent
-        </div>
-        <div className="h-px w-24 bg-black/10" />
-        <div className="flex gap-12">
-          {["Protocol", "GitHub"].map(item => (
-            <a key={item} href="#" className="text-[11px] font-black uppercase tracking-widest text-secondary hover:text-accent transition-colors">{item}</a>
-          ))}
-          <a href="/security" className="text-[11px] font-black uppercase tracking-widest text-secondary hover:text-accent transition-colors">Security</a>
-          <a href="/privacy" className="text-[11px] font-black uppercase tracking-widest text-secondary hover:text-accent transition-colors">Privacy</a>
-        </div>
-      </footer>
+      <Footer />
 
       <LaunchOverlay isOpen={showOverlay} onClose={handleClose} />
     </div>

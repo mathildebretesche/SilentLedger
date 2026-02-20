@@ -11,10 +11,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RainbowKitProvider,
   darkTheme,
-  getDefaultWallets,
+  getDefaultConfig,
 } from "@rainbow-me/rainbowkit";
 import { mainnet, sepolia } from "wagmi/chains";
-import { createConfig, http } from "wagmi";
+import { http } from "wagmi";
 
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -27,16 +27,15 @@ if (!projectId) {
   );
 }
 
-// ── Wagmi config ───────────────────────────────────────────────────────────
-const { wallets } = getDefaultWallets();
-
-const wagmiConfig = createConfig({
+const wagmiConfig = getDefaultConfig({
+  appName: "Silent Ledger",
+  projectId: projectId,
   chains: [mainnet, sepolia],
   transports: {
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
-  ssr: false, // EXPLICITLY disable SSR here to prevent localStorage errors
+  ssr: true, // Safely handles SSR with RainbowKit
 });
 
 // Un seul QueryClient partagé – persiste entre les navigations client.

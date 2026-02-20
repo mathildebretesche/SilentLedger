@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { Eye, Lock, Server, Key, Layers, Zap, ShieldCheck } from "lucide-react";
 
 const sections = [
@@ -74,8 +74,6 @@ const sections = [
 ];
 
 export default function PrivacyPage() {
-  const router = useRouter();
-
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -175,17 +173,7 @@ export default function PrivacyPage() {
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="px-8 py-16 max-w-5xl mx-auto w-full flex items-center justify-between border-t border-white/40">
-        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-secondary">
-          The Future is Silent
-        </span>
-        <button
-          onClick={() => router.push("/")}
-          className="text-[11px] font-black uppercase tracking-widest text-secondary hover:text-accent transition-colors"
-        >
-          ← Home
-        </button>
-      </footer>
+      <Footer />
     </div>
   );
 }

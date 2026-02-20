@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import "./globals.css";
 
-const Web3Provider = dynamic(
-  () => import("@/providers/Web3Provider").then((mod) => mod.Web3Provider),
-  { ssr: false }
-);
+import { Web3Provider } from "@/providers/Web3Provider";
+import { AppBackground } from "@/components/AppBackground";
 
 export const metadata: Metadata = {
   title: "Silent Ledger – Proof of Intelligence",
@@ -30,7 +27,10 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Web3Provider>{children}</Web3Provider>
+        <Web3Provider>
+          <AppBackground />
+          {children}
+        </Web3Provider>
       </body>
     </html>
   );
