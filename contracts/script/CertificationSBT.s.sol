@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { Script, console } from "forge-std/Script.sol";
-import { CertificationSBT, CertificationParams, CertLevel } from "../src/CertificationSBT.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {
+    CertificationSBT,
+    CertificationParams,
+    CertLevel
+} from "../src/CertificationSBT.sol";
 
 /**
  * @title  CertificationSBTScript
@@ -15,9 +19,8 @@ contract CertificationSBTScript is Script {
     function setUp() public {}
 
     function run() public {
-        // Use the first default anvil account as deployer and issuer.
-        // Private key for 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        // Use PRIVATE_KEY from .env
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -28,12 +31,12 @@ contract CertificationSBTScript is Script {
 
         // 2. Mint a sample certification.
         CertificationParams memory params = CertificationParams({
-            recipient:      0x70997970C51812dc3A010C7d01b50e0d17dc79C8, // Anvil #2
+            recipient: deployer, // Mint to deployer instead of Anvil #2
             competenceName: "Advanced ZK-TLS Security",
-            level:          CertLevel.Expert,
-            examScore:      95,
+            level: CertLevel.Expert,
+            examScore: 95,
             proofOfWorkURL: "https://github.com/silent-ledger/proof-ex",
-            studentId:      keccak256(abi.encodePacked("student@silentledger.com"))
+            studentId: keccak256(abi.encodePacked("student@silentledger.com"))
         });
 
         uint256 tokenId = sbt.mint(params);

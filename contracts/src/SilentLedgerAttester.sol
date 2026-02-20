@@ -22,10 +22,18 @@ pragma solidity ^0.8.24;
 //      jamais en clair on-chain (pseudonymisation).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { IEAS, AttestationRequest, AttestationRequestData } from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
-import { ISchemaRegistry } from "@ethereum-attestation-service/eas-contracts/contracts/ISchemaRegistry.sol";
-import { ISchemaResolver } from "@ethereum-attestation-service/eas-contracts/contracts/resolver/ISchemaResolver.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    IEAS,
+    AttestationRequest,
+    AttestationRequestData
+} from "@ethereum-attestation-service/eas-contracts/contracts/IEAS.sol";
+import {
+    ISchemaRegistry
+} from "@ethereum-attestation-service/eas-contracts/contracts/ISchemaRegistry.sol";
+import {
+    ISchemaResolver
+} from "@ethereum-attestation-service/eas-contracts/contracts/resolver/ISchemaResolver.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 // ---------------------------------------------------------------------------
 // Reclaim Protocol interface (subset nécessaire)
@@ -43,9 +51,9 @@ struct ReclaimProof {
 }
 
 struct ClaimInfo {
-    string provider;   // ex: "http"
+    string provider; // ex: "http"
     string parameters; // URL + regex du claim
-    string context;    // JSON: {"extractedParameters":{"username_hash":"...","contributions":"42"}}
+    string context; // JSON: {"extractedParameters":{"username_hash":"...","contributions":"42"}}
 }
 
 struct SignedClaim {
@@ -124,17 +132,28 @@ contract SilentLedgerAttester is Ownable {
         reclaimVerifier = IReclaim(_reclaimVerifier);
 
         // ── Enregistrement du schéma EAS ───────────────────────────────────
-        // On enregistre le schéma une fois lors du déploiement.
-        // L'UID retourné est déterministe (hash du schéma + resolver + revocable).
-        // Schéma :
-        //   • platformId (bytes32)   : keccak256 du couple "platform:username"
-        //   • reputationScore (uint256): score extrait de la preuve (ex: nb de contributions)
-        //   • isVerified (bool)      : toujours true ici (la preuve ZK le garantit)
-        schemaUID = ISchemaRegistry(_schemaRegistry).register(
-            "bytes32 platformId,uint256 reputationScore,bool isVerified",
-            ISchemaResolver(address(0)), // pas de SchemaResolver custom pour la phase 1
-            true        // révocable → l'owner peut invalider si nécessaire
-        );
+        // On tente d'enregistrer le schéma. S'il existe déjà ("AlreadyExists()"),
+        // on calcule simplement son UID déterministe pour l'utiliser.
+        string
+            memory schemaStr = "bytes32 platformId,uint256 reputationScore,bool isVerified";
+        ISchemaResolver resolver = ISchemaResolver(address(0));
+        bool revocable = true;
+
+        try
+            ISchemaRegistry(_schemaRegistry).register(
+                schemaStr,
+                resolver,
+                revocable
+            )
+        returns (bytes32 uid) {
+            schemaUID = uid;
+        } catch {
+            // Le schéma est déjà enregistré. EAS calcule le schema UID via :
+            // keccak256(abi.encodePacked(schema, resolver, revocable))
+            schemaUID = keccak256(
+                abi.encodePacked(schemaStr, resolver, revocable)
+            );
+        }
     }
 
     // ── External ───────────────────────────────────────────────────────────
@@ -167,7 +186,10 @@ contract SilentLedgerAttester is Ownable {
 
         // ── Step 2 : Validation du provider ───────────────────────────────
         // On s'assure que la preuve vient bien d'un provider "http" (GitHub).
-        if (keccak256(bytes(proof.claimInfo.provider)) != keccak256(bytes("http"))) {
+        if (
+            keccak256(bytes(proof.claimInfo.provider)) !=
+            keccak256(bytes("http"))
+        ) {
             revert InvalidProofProvider(proof.claimInfo.provider);
         }
 
@@ -177,9 +199,9 @@ contract SilentLedgerAttester is Ownable {
         // Le schéma EAS attend les données ABI-encodées dans le même ordre
         // que la chaîne de schéma enregistrée.
         bytes memory encodedData = abi.encode(
-            platformId,    // bytes32
+            platformId, // bytes32
             reputationScore, // uint256
-            true           // isVerified = true (garanti par la preuve ZK)
+            true // isVerified = true (garanti par la preuve ZK)
         );
 
         // ── Step 4 : Création de l'attestation EAS ────────────────────────
@@ -190,9 +212,9 @@ contract SilentLedgerAttester is Ownable {
             schema: schemaUID,
             data: AttestationRequestData({
                 recipient: msg.sender,
-                expirationTime: 0,      // pas d'expiration
+                expirationTime: 0, // pas d'expiration
                 revocable: true,
-                refUID: bytes32(0),     // pas de référence parente
+                refUID: bytes32(0), // pas de référence parente
                 data: encodedData,
                 value: 0
             })
@@ -211,7 +233,9 @@ contract SilentLedgerAttester is Ownable {
      * @notice Retourne tous les UIDs d'attestations EAS d'un utilisateur.
      * @param user Adresse de l'utilisateur.
      */
-    function getAttestations(address user) external view returns (bytes32[] memory) {
+    function getAttestations(
+        address user
+    ) external view returns (bytes32[] memory) {
         return userAttestations[user];
     }
 
