@@ -4,18 +4,15 @@
  * Ce service orchestre le flux zkTLS via le SDK Reclaim Protocol.
  *
  * Fonctionnement ZK :
- *   1. On construit un ProofRequest ciblant l'endpoint GitHub qui renvoie
- *      les données de contributions (réponse HTTPS publique).
- *   2. Le SDK Reclaim génère une session et retourne une URL/QR code vers
- *      son attestor network. L'utilisateur ouvre cette URL sur son device.
- *   3. L'attestor network intercepte la réponse HTTPS, applique le regex
- *      paramétré dans la requête, et génère une preuve ZK (zkTLS MPC-TLS)
- *      sans jamais exposer le token ou les en-têtes HTTP privés.
- *   4. La preuve, signée par les nœuds attestors, est retournée via callback.
- *   5. On la passe ensuite à SilentLedgerAttester.submitProof() on-chain.
+ *   1. La route serveur /api/reclaim/init crée et signe un ProofRequest.
+ *   2. Le client reconstruit la session via fromJsonString() et obtient une URL.
+ *   3. L'utilisateur ouvre l'URL sur son appareil et s'authentifie sur GitHub.
+ *   4. L'attestor réseau vérifie la session GitHub → preuve ZK sans exposer
+ *      aucun cookie ni token.
+ *   5. La preuve est ancrée on-chain via SilentLedgerAttester.submitProof().
  */
 
-import { ReclaimProofRequest } from "@reclaimprotocol/js-sdk";
+import { ReclaimProofRequest, transformForOnchain } from "@reclaimprotocol/js-sdk";
 import {
   sanitizeProofContext,
   sanitizeExtractedParams,
@@ -25,24 +22,20 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProofRequestOptions {
-  /** Username GitHub à prouver (sera hashé avant envoi on-chain). */
-  githubUsername: string;
+  /** Adresse du wallet (liée au contexte de la preuve). */
+  walletAddress: string;
   /** Callback déclenché quand la preuve ZK est prête. */
   onProofReady: (result: ReclaimCallbackResult) => void;
   /** Callback d'erreur. */
   onError?: (error: Error) => void;
 }
 
-/**
- * Représentation typée de la preuve ZK retournée par le SDK Reclaim.
- * Ces données sont ensuite passées au contrat SilentLedgerAttester.
- */
 export interface ZKProof {
-  /** Proof brute sérialisée (à passer telle quelle au contract). */
+  /** Proof brute sérialisée (à passer telle quelle au contrat). */
   raw: string;
-  /** Provider utilisé (doit être "http" pour nos cas d'usage). */
+  /** Provider utilisé. */
   provider: string;
-  /** Paramètres extraits : contributions count etc. */
+  /** Paramètres extraits par le provider. */
   extractedParams: Record<string, string>;
   /** Timestamp UNIX de génération de la preuve. */
   timestampS: number;
@@ -52,108 +45,92 @@ export interface ZKProof {
 
 export interface ReclaimCallbackResult {
   proof: ZKProof;
-  /** platformId côté client : keccak256("github:<username>").
-   *  Calculé ici pour éviter que le username n'apparaisse jamais on-chain. */
+  /**
+   * platformId = keccak256("github") — identifie la plateforme GitHub,
+   * indépendamment du username, pour l'ancrage on-chain.
+   */
   platformId: `0x${string}`;
-  /** Score de réputation extrait de la preuve. */
+  /**
+   * Score extrait de la preuve (contributions, repos, followers…).
+   * Vaut 1 par défaut si rien n'est trouvé (simple possession du compte).
+   */
   reputationScore: bigint;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/**
- * ID du provider Reclaim pour les contributions GitHub.
- * À créer sur https://dev.reclaimprotocol.org/ et stocker dans .env.local
- *
- * Le provider "GitHub Contributions" utilise le regex suivant sur
- * https://github.com/<username> pour extraire le nombre de contributions
- * de l'année en cours depuis le HTML public de la page.
- */
 const GITHUB_PROVIDER_ID =
   process.env.NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID ?? "";
 
-/** App ID Reclaim (depuis dashboard dev.reclaimprotocol.org). */
-const APP_ID = process.env.NEXT_PUBLIC_RECLAIM_APP_ID ?? "";
-
-/** App Secret Reclaim (ne doit JAMAIS être exposé côté client en production). */
-const APP_SECRET = process.env.NEXT_PUBLIC_RECLAIM_APP_SECRET ?? "";
-
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
-/**
- * Calcule le keccak256 de "github:<username>" côté client (en JS).
- * On utilise l'ABI encoder de viem pour reproduire exactement ce que
- * le contrat Solidity ferait avec keccak256(abi.encodePacked("github:", username)).
- */
-async function computePlatformId(
-  username: string
-): Promise<`0x${string}`> {
-  // Dynamique import pour éviter le bundle côté serveur si SSR
-  const { keccak256, toBytes, concat } = await import("viem");
-  const encoded = concat([toBytes("github:"), toBytes(username)]);
-  return keccak256(encoded);
+/** platformId fixe pour la plateforme GitHub (keccak256("github")). */
+async function getGithubPlatformId(): Promise<`0x${string}`> {
+  const { keccak256, toBytes } = await import("viem");
+  return keccak256(toBytes("github"));
 }
 
 /**
- * Extrait le score de réputation du contexte JSON de la preuve Reclaim.
- * Le JSON a la forme :
- * { "extractedParameters": { "contributions": "420", ... } }
+ * Extrait un score numérique de la preuve.
+ * Tente les clés courantes puis retourne 1 (simple possession de compte).
  */
 function extractReputationScore(proof: ZKProof): bigint {
-  const raw = proof.extractedParams["contributions"] ?? "0";
-  return BigInt(raw.replace(/[^0-9]/g, "") || "0");
+  const keys = ["contributions", "followers", "public_repos", "score", "count"];
+  for (const key of keys) {
+    const val = proof.extractedParams[key];
+    if (val) {
+      const n = BigInt(val.replace(/[^0-9]/g, "") || "0");
+      if (n > 0n) return n;
+    }
+  }
+  return 1n; // compte vérifié = score symbolique 1
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 /**
- * Initialise un ProofRequest Reclaim pour prouver le nombre de contributions
- * GitHub d'un utilisateur sans révéler son token ou ses cookies.
+ * Initie une session zkTLS Reclaim pour vérifier que l'utilisateur possède
+ * un compte GitHub. Aucun username n'est demandé — la preuve est générée
+ * depuis la session GitHub active sur l'appareil de l'utilisateur.
  *
- * @returns L'URL/QR code de la session Reclaim à présenter à l'utilisateur.
+ * @returns L'URL de la session Reclaim à ouvrir sur le téléphone.
  */
-export async function initGitHubContributionsProof(
+export async function initGitHubProof(
   options: ProofRequestOptions
 ): Promise<string> {
-  const { githubUsername, onProofReady, onError } = options;
+  const { walletAddress, onProofReady, onError } = options;
 
-  if (!APP_ID || !APP_SECRET || !GITHUB_PROVIDER_ID) {
+  if (!GITHUB_PROVIDER_ID) {
     throw new Error(
-      "Missing Reclaim env vars. Check NEXT_PUBLIC_RECLAIM_APP_ID, " +
-      "NEXT_PUBLIC_RECLAIM_APP_SECRET, NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID"
+      "Missing env var: NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID"
     );
   }
 
-  // ── Création de la session Reclaim ─────────────────────────────────────
-  const proofRequest = await ReclaimProofRequest.init(
-    APP_ID,
-    APP_SECRET,
-    GITHUB_PROVIDER_ID
-  );
+  // ── 1. Obtenir la config signée depuis le serveur ──────────────────────
+  const res = await fetch("/api/reclaim/init", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ providerId: GITHUB_PROVIDER_ID, walletAddress }),
+  });
 
-  // Contexte additionnel passé dans la preuve pour lier le claim à un username.
-  // Ce contexte est signé par l'attestor → impossibilité de le falsifier.
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(`Reclaim init failed: ${body.error ?? res.statusText}`);
+  }
 
-  proofRequest.setAppCallbackUrl(`${appUrl}/api/reclaim-callback`);
+  const { requestConfig } = await res.json() as { requestConfig: string };
 
-  proofRequest.addContext(
-    `github_user`,
-    githubUsername
-  );
+  // ── 2. Reconstruire la session côté client ─────────────────────────────
+  const proofRequest = await ReclaimProofRequest.fromJsonString(requestConfig);
 
-  // ── Callback de réception de la preuve ─────────────────────────────────
+  // ── 3. Callbacks ───────────────────────────────────────────────────────
   await proofRequest.startSession({
     onSuccess: async (proofData: unknown) => {
       try {
-        const result = await handleProofCallback(proofData, githubUsername);
+        const result = await handleProofCallback(proofData);
         onProofReady(result);
       } catch (err) {
         if (err instanceof SensitiveDataLeakError) {
-          // Fuite détectée : on bloque silencieusement et on remonte l'erreur
-          // sans logger le payload pour ne pas exposer la donnée.
           onError?.(err);
           return;
         }
@@ -165,66 +142,76 @@ export async function initGitHubContributionsProof(
     },
   });
 
-  // getRequestUrl() is async in this SDK version
   return await proofRequest.getRequestUrl();
 }
 
+/** @deprecated Utiliser initGitHubProof à la place. */
+export async function initGitHubContributionsProof(
+  options: { githubUsername: string } & Omit<ProofRequestOptions, "walletAddress">
+): Promise<string> {
+  return initGitHubProof({
+    walletAddress: options.githubUsername,
+    onProofReady: options.onProofReady,
+    onError: options.onError,
+  });
+}
+
 /**
- * Traite le callback Reclaim et retourne la preuve structurée.
- * Appelé automatiquement par startSession() ou manuellement depuis
- * le route handler Next.js /api/reclaim-callback.
+ * Traite le payload de preuve retourné par le SDK Reclaim v4.
  *
- * @param rawProof  Objet preuve brut reçu du SDK.
- * @param username  Username GitHub correspondant (pour calcul du platformId).
+ * Le SDK v4 passe un `Proof | Proof[]` avec la structure :
+ *   proof.claimData     → provider, parameters, context, identifier, timestampS
+ *   proof.extractedParameterValues → paramètres extraits (clé/valeur)
+ *   proof.signatures, proof.witnesses
+ *
+ * `transformForOnchain(proof)` produit { claimInfo, signedClaim } attendu
+ * par le contrat SilentLedgerAttester.submitProof().
  */
 export async function handleProofCallback(
-  rawProof: unknown,
-  username: string
+  rawProof: unknown
 ): Promise<ReclaimCallbackResult> {
-  // Validation de la structure de base
-  if (!rawProof || typeof rawProof !== "object") {
+  if (!rawProof) {
+    throw new Error("Invalid proof: received empty payload");
+  }
+
+  // Le SDK peut envoyer un tableau (multi-claim) ou un objet seul
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proofObj: any = Array.isArray(rawProof) ? rawProof[0] : rawProof;
+
+  if (!proofObj || typeof proofObj !== "object") {
     throw new Error("Invalid proof: expected an object");
   }
 
-  const proofObj = rawProof as Record<string, unknown>;
+  const claimData = proofObj.claimData as Record<string, unknown> | undefined;
 
-  const claimInfo = proofObj["claimInfo"] as Record<string, string> | undefined;
-  const signedClaim = proofObj["signedClaim"] as
-    | Record<string, unknown>
-    | undefined;
-
-  if (!claimInfo || !signedClaim) {
-    throw new Error("Invalid proof structure: missing claimInfo or signedClaim");
+  if (!claimData) {
+    throw new Error("Invalid proof structure: missing claimData");
   }
 
-  // Extraction des paramètres depuis le contexte JSON
-  let extractedParams: Record<string, string> = {};
-  try {
-    const ctx = JSON.parse(claimInfo["context"] ?? "{}") as {
-      extractedParameters?: Record<string, string>;
-    };
-    extractedParams = ctx.extractedParameters ?? {};
-  } catch {
-    // Le contexte n'est pas du JSON valide – on continue avec un objet vide
-  }
+  // Paramètres extraits par le provider (SDK v4 : extractedParameterValues)
+  const extractedParameterValues: Record<string, string> =
+    proofObj.extractedParameterValues ?? {};
 
-  // ── Audit de sécurité : détection de fuite avant tout traitement ────────
-  // Lance une SensitiveDataLeakError si un token/password est détecté.
-  sanitizeProofContext(rawProof, { throwOnLeak: true });
+  // Audit de sécurité : détection de fuite de données sensibles
+  sanitizeProofContext(proofObj, { throwOnLeak: true });
+  const safeExtractedParams = sanitizeExtractedParams(
+    extractedParameterValues as Record<string, string>
+  );
 
-  // Nettoyage défensif des paramètres extraits (double-sécurité)
-  const safeExtractedParams = sanitizeExtractedParams(extractedParams);
+  // Transformation pour l'on-chain → { claimInfo, signedClaim }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onChainData: any = transformForOnchain(proofObj);
 
-  const claim = signedClaim["claim"] as Record<string, unknown>;
   const zkProof: ZKProof = {
-    raw: JSON.stringify(rawProof),
-    provider: claimInfo["provider"] ?? "http",
+    // raw contient le format { claimInfo, signedClaim } attendu par le contrat
+    raw: JSON.stringify(onChainData),
+    provider: String(claimData["provider"] ?? "http"),
     extractedParams: safeExtractedParams,
-    timestampS: Number(claim?.["timestampS"] ?? 0),
-    identifier: String(claim?.["identifier"] ?? "0x0"),
+    timestampS: Number(claimData["timestampS"] ?? 0),
+    identifier: String(proofObj.identifier ?? claimData["identifier"] ?? "0x0"),
   };
 
-  const platformId = await computePlatformId(username);
+  const platformId = await getGithubPlatformId();
   const reputationScore = extractReputationScore(zkProof);
 
   return { proof: zkProof, platformId, reputationScore };

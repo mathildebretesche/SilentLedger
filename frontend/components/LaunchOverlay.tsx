@@ -91,7 +91,7 @@ export function LaunchOverlay({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                         {/* Primary Action: Portal */}
                         <Link
-                            href="/dashboard"
+                            href="/enter"
                             onClick={handleClose}
                             className="group relative flex flex-col p-10 rounded-[40px] text-white overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(32,52,159,0.3)]"
                         >

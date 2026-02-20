@@ -20,14 +20,12 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { Header } from "@/components/Header";
 import {
   Shield,
-  GitBranch,
-  ExternalLink,
   Loader2,
   CheckCircle2,
   Zap,
 } from "lucide-react";
 
-import { initGitHubContributionsProof, type ZKProof } from "@/services/ReclaimService";
+import { initGitHubProof, type ZKProof } from "@/services/ReclaimService";
 import {
   SILENT_LEDGER_ATTESTER_ABI,
   ATTESTER_ADDRESS,
@@ -37,6 +35,7 @@ import { SilentProofBadge } from "@/components/SilentProofBadge";
 import { BadgeSkeleton } from "@/components/BadgeSkeleton";
 import { TxStatus } from "@/components/TxStatus";
 import { StatRow } from "@/components/StatRow";
+import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { Wallet } from "lucide-react";
 import { keccak256, toBytes } from "viem";
 
@@ -45,7 +44,6 @@ export default function SilentDashboard() {
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [githubUsername, setGithubUsername] = useState("");
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [zkProof, setZkProof] = useState<ZKProof | null>(null);
   const [platformId, setPlatformId] = useState<`0x${string}` | null>(null);
@@ -75,15 +73,15 @@ export default function SilentDashboard() {
 
   /** Étape 1 : Lance le flux zkTLS Reclaim. */
   const handleStampIntelligence = useCallback(async () => {
-    if (!githubUsername.trim()) return;
+    if (!address) return;
     setIsGenerating(true);
     setProofUrl(null);
     setZkProof(null);
     setTxStatus(null);
 
     try {
-      const url = await initGitHubContributionsProof({
-        githubUsername: githubUsername.trim(),
+      const url = await initGitHubProof({
+        walletAddress: address,
         onProofReady: async (result) => {
           setZkProof(result.proof);
           setPlatformId(result.platformId);
@@ -103,7 +101,7 @@ export default function SilentDashboard() {
         message: err instanceof Error ? err.message : "Erreur inconnue",
       });
     }
-  }, [githubUsername]);
+  }, [address]);
 
   /** Étape 2 : Soumet la preuve ZK on-chain via SilentLedgerAttester.submitProof(). */
   const handleSubmitOnChain = useCallback(async () => {
@@ -117,6 +115,7 @@ export default function SilentDashboard() {
         abi: SILENT_LEDGER_ATTESTER_ABI,
         functionName: "submitProof",
         args: [rawProof, platformId, reputationScore],
+        gas: 3_000_000n,
       });
 
       setTxStatus({
@@ -125,7 +124,6 @@ export default function SilentDashboard() {
       });
       setZkProof(null);
       setProofUrl(null);
-      setGithubUsername("");
       await refetchAttestations();
     } catch (err) {
       setTxStatus({
@@ -204,6 +202,7 @@ export default function SilentDashboard() {
           examScore: mockData.examScore,
           deadline: mockData.deadline
         }],
+        gas: 3_000_000n,
       });
 
       setTxStatus({
@@ -329,44 +328,12 @@ export default function SilentDashboard() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {/* Username input */}
+                {/* Vérification GitHub – un seul bouton, pas d'input username */}
                 <div style={{ display: "flex", gap: 10 }}>
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      padding: "0 14px",
-                      gap: 10,
-                    }}
-                  >
-                    <GitBranch size={15} color="var(--text-muted)" />
-                    <input
-                      type="text"
-                      placeholder="GitHub username…"
-                      value={githubUsername}
-                      onChange={(e) => setGithubUsername(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleStampIntelligence()}
-                      style={{
-                        flex: 1,
-                        background: "transparent",
-                        border: "none",
-                        outline: "none",
-                        fontSize: 14,
-                        color: "var(--text-primary)",
-                        padding: "12px 0",
-                        fontFamily: "inherit",
-                      }}
-                    />
-                  </div>
-
                   <button
                     className="btn-stamp"
                     onClick={handleStampIntelligence}
-                    disabled={!githubUsername.trim() || isGenerating || isTxPending}
+                    disabled={isGenerating || isTxPending}
                     style={{ whiteSpace: "nowrap" }}
                     id="stamp-intelligence-btn"
                   >
@@ -378,7 +345,7 @@ export default function SilentDashboard() {
                     ) : (
                       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <Shield size={14} />
-                        Stamp my Intelligence
+                        Vérifier mon compte GitHub
                       </span>
                     )}
                   </button>
@@ -386,56 +353,7 @@ export default function SilentDashboard() {
 
                 {/* Reclaim QR / Link */}
                 {proofUrl && !zkProof && (
-                  <div
-                    style={{
-                      padding: "16px",
-                      background: "var(--bg-elevated)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 10,
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: "var(--text-secondary)",
-                        marginBottom: 10,
-                      }}
-                    >
-                      Ouvrez ce lien sur votre téléphone pour générer la preuve zkTLS :
-                    </p>
-                    <a
-                      href={proofUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: "var(--accent-light)",
-                        textDecoration: "none",
-                        wordBreak: "break-all",
-                      }}
-                    >
-                      <ExternalLink size={13} />
-                      {proofUrl.length > 60 ? proofUrl.slice(0, 60) + "…" : proofUrl}
-                    </a>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-muted)",
-                        marginTop: 10,
-                      }}
-                    >
-                      En attente de la preuve ZK…
-                      <Loader2
-                        size={11}
-                        style={{ display: "inline", marginLeft: 6, verticalAlign: "middle" }}
-                        className="animate-spin"
-                      />
-                    </p>
-                  </div>
+                  <QRCodeDisplay url={proofUrl} waiting />
                 )}
 
                 {/* Proof ready → submit on-chain */}
