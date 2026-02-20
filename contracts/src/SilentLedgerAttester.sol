@@ -38,8 +38,14 @@ import {
 } from "@ethereum-attestation-service/eas-contracts/contracts/resolver/ISchemaResolver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {CertificationSBT, CertificationParams, CertLevel} from "./CertificationSBT.sol";
+import {
+    MessageHashUtils
+} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {
+    CertificationSBT,
+    CertificationParams,
+    CertLevel
+} from "./CertificationSBT.sol";
 
 // ---------------------------------------------------------------------------
 // Reclaim Protocol interface (subset nécessaire)
@@ -82,10 +88,6 @@ interface IReclaim {
     function verifyProof(ReclaimProof memory proof) external view;
 }
 
-interface IReclaim {
-    function verifyProof(ReclaimProof memory proof) external view;
-}
-
 // ---------------------------------------------------------------------------
 // Structures Oracle
 // ---------------------------------------------------------------------------
@@ -95,12 +97,12 @@ interface IReclaim {
  */
 struct OracleData {
     address recipient;
-    string  competenceName;
-    uint8   level;          // 0=Beginner, 1=Intermediate, 2=Expert
-    uint32  examScore;
-    string  proofOfWorkURL; // ex: Analysis Report URL
-    bytes32 studentId;      // ex: keccak256(walletAddress) ou autre ID
-    uint64  deadline;       // Timestamp limite pour submit
+    string competenceName;
+    uint8 level; // 0=Beginner, 1=Intermediate, 2=Expert
+    uint32 examScore;
+    string proofOfWorkURL; // ex: Analysis Report URL
+    bytes32 studentId; // ex: keccak256(walletAddress) ou autre ID
+    uint64 deadline; // Timestamp limite pour submit
 }
 // SilentLedgerAttester
 // ---------------------------------------------------------------------------
@@ -262,15 +264,17 @@ contract SilentLedgerAttester is Ownable {
         // Pour Reclaim, on génère des métadonnées par défaut basé sur le score.
         // N.B: On caste reputationScore en uint32.
         uint32 score32 = uint32(reputationScore > 100 ? 100 : reputationScore);
-        CertLevel level = score32 > 80 ? CertLevel.Expert : (score32 > 50 ? CertLevel.Intermediate : CertLevel.Beginner);
+        CertLevel level = score32 > 80
+            ? CertLevel.Expert
+            : (score32 > 50 ? CertLevel.Intermediate : CertLevel.Beginner);
 
         CertificationParams memory sbtParams = CertificationParams({
-            recipient:      msg.sender,
+            recipient: msg.sender,
             competenceName: "Open Source Contributor",
-            level:          level,
-            examScore:      score32,
+            level: level,
+            examScore: score32,
             proofOfWorkURL: "https://github.com", // Générique pour Reclaim
-            studentId:      platformId // On utilise le platformId hashé comme studentId
+            studentId: platformId // On utilise le platformId hashé comme studentId
         });
 
         sbtContract.mint(sbtParams);
@@ -292,15 +296,17 @@ contract SilentLedgerAttester is Ownable {
         if (block.timestamp > data.deadline) revert SignatureExpired();
 
         // 1. Reconstuire le hash signé
-        bytes32 structHash = keccak256(abi.encode(
-            data.recipient,
-            keccak256(bytes(data.competenceName)),
-            data.level,
-            data.examScore,
-            keccak256(bytes(data.proofOfWorkURL)),
-            data.studentId,
-            data.deadline
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                data.recipient,
+                keccak256(bytes(data.competenceName)),
+                data.level,
+                data.examScore,
+                keccak256(bytes(data.proofOfWorkURL)),
+                data.studentId,
+                data.deadline
+            )
+        );
 
         // Note: Idéalement utiliser EIP-712, mais ici simple hash préfixé eth_sign
         bytes32 hash = MessageHashUtils.toEthSignedMessageHash(structHash);
@@ -321,12 +327,12 @@ contract SilentLedgerAttester is Ownable {
         AttestationRequest memory request = AttestationRequest({
             schema: schemaUID,
             data: AttestationRequestData({
-                recipient:      data.recipient, // Peut être msg.sender ou un tiers
+                recipient: data.recipient, // Peut être msg.sender ou un tiers
                 expirationTime: 0,
-                revocable:      true,
-                refUID:         bytes32(0),
-                data:           encodedData,
-                value:          0
+                revocable: true,
+                refUID: bytes32(0),
+                data: encodedData,
+                value: 0
             })
         });
 
@@ -334,12 +340,12 @@ contract SilentLedgerAttester is Ownable {
 
         // 4. Mint SBT
         CertificationParams memory sbtParams = CertificationParams({
-            recipient:      data.recipient,
+            recipient: data.recipient,
             competenceName: data.competenceName,
-            level:          CertLevel(data.level),
-            examScore:      data.examScore,
+            level: CertLevel(data.level),
+            examScore: data.examScore,
             proofOfWorkURL: data.proofOfWorkURL,
-            studentId:      data.studentId
+            studentId: data.studentId
         });
 
         sbtContract.mint(sbtParams);

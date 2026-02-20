@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {SilentLedgerAttester} from "../src/SilentLedgerAttester.sol";
+import {CertificationSBT} from "../src/CertificationSBT.sol";
 
 /**
  * @title DeployScript
@@ -48,11 +49,21 @@ contract DeployScript is Script {
 
         vm.startBroadcast();
 
+        // 1. Deploy SBT with the deployer as temporary issuer
+        CertificationSBT sbt = new CertificationSBT(msg.sender);
+        console.log("CertificationSBT deployed at :", address(sbt));
+
+        // 2. Deploy Attester
         SilentLedgerAttester attester = new SilentLedgerAttester(
             EAS,
             SCHEMA_REGISTRY,
-            reclaimVerifier
+            reclaimVerifier,
+            msg.sender, // oracle signer (deployer for now)
+            address(sbt)
         );
+
+        // 3. Set Attester as SBT issuer
+        sbt.setIssuer(address(attester));
 
         vm.stopBroadcast();
 
