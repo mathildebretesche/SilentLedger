@@ -38,12 +38,13 @@ export async function POST(req: NextRequest) {
     const proofRequest = await ReclaimProofRequest.init(
       APP_ID,
       APP_SECRET,
-      providerId
+      providerId,
+      { acceptAiProviders: true }   // accepte les preuves AI Witness (fallback MPC)
     );
 
     // Lie la preuve au wallet de l'utilisateur
     if (walletAddress) {
-      proofRequest.setContext(walletAddress, "Silent Ledger GitHub verification");
+      proofRequest.setContext(walletAddress, "Silent Ledger verification");
     }
 
     // Sérialise la config signée pour être envoyée au client
