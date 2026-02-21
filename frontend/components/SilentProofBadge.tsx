@@ -37,6 +37,12 @@ export function SilentProofBadge({
             bg: "rgba(10,102,194,0.1)",
             border: "1px solid rgba(10,102,194,0.2)",
         },
+        [keccak256(toBytes("farcaster"))]: {
+            label: "Farcaster Identity",
+            icon: <Shield size={16} color="#855DCD" />, // Using Shield for now as lucide has no farcaster, or I can use an SVG
+            bg: "rgba(133,93,205,0.1)",
+            border: "1px solid rgba(133,93,205,0.2)",
+        },
     };
 
     const config = (platformId && platformConfig[platformId as keyof typeof platformConfig]) || {

@@ -399,6 +399,7 @@ export default function SilentDashboard() {
               { id: "github", label: "GitHub", icon: <Github size={32} />, color: "bg-white/40", text: "Vérifiez vos contributions anonymement.", hash: keccak256(toBytes("github")) },
               { id: "x", label: "X / Twitter", icon: <Twitter size={32} />, color: "bg-blue-500/10", text: "Prouvez votre influence sociale.", hash: keccak256(toBytes("x")) },
               { id: "linkedin", label: "LinkedIn", icon: <Linkedin size={32} />, color: "bg-blue-700/10", text: "Certifiez votre carrière pro.", hash: keccak256(toBytes("linkedin")) },
+              { id: "farcaster", label: "Farcaster", icon: <Shield size={32} />, color: "bg-purple-500/10", text: "Prouvez votre identité décentralisée.", hash: keccak256(toBytes("farcaster")) },
             ].map((p) => {
               const isPlatformVerified = verifiedPlatforms.includes(p.hash);
 

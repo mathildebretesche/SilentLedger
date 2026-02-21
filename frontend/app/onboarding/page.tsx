@@ -437,6 +437,7 @@ export default function OnboardingPage() {
                     { id: "github", icon: <Github size={24} />, label: "GitHub" },
                     { id: "x", icon: <Twitter size={24} />, label: "X / Twitter" },
                     { id: "linkedin", icon: <Linkedin size={24} />, label: "LinkedIn" },
+                    { id: "farcaster", icon: <Shield size={24} />, label: "Farcaster" },
                   ].map((p) => (
                     <button
                       key={p.id}

@@ -21,7 +21,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SupportedPlatform = "github" | "x" | "linkedin";
+export type SupportedPlatform = "github" | "x" | "linkedin" | "farcaster";
 
 export interface ProofRequestOptions {
   /** Plateforme à vérifier (ex: "github", "x", "linkedin"). */
@@ -67,6 +67,7 @@ const PROVIDER_IDS: Record<SupportedPlatform, string | undefined> = {
   github: process.env.NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID,
   x: process.env.NEXT_PUBLIC_RECLAIM_X_PROVIDER_ID,
   linkedin: process.env.NEXT_PUBLIC_RECLAIM_LINKEDIN_PROVIDER_ID,
+  farcaster: process.env.NEXT_PUBLIC_RECLAIM_FARCASTER_PROVIDER_ID,
 };
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
