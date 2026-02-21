@@ -15,7 +15,9 @@ export function SilentProofBadge({
     index: number;
     platformId?: string;
 }) {
-    const truncatedUid = `${attestation.uid.slice(0, 10)}…${attestation.uid.slice(-6)}`;
+    const truncatedUid = typeof attestation.uid === 'string' && attestation.uid
+      ? `${attestation.uid.slice(0, 10)}…${attestation.uid.slice(-6)}`
+      : 'Invalid UID';
 
     // Mappage des plateformes
     const platformConfig = {

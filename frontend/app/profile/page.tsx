@@ -19,13 +19,15 @@ import {
   User,
   ExternalLink,
 } from "lucide-react";
-import { isAddress, parseEthereumAddress, decodeAbiParameters } from "viem";
+import { isAddress, decodeAbiParameters } from "viem";
 
 import {
   SILENT_LEDGER_ATTESTER_ABI,
   ATTESTER_ADDRESS,
   CERTIFICATION_SBT_ABI,
   SBT_ADDRESS,
+  EAS_ADDRESS,
+  EAS_ABI,
 } from "@/lib/contracts";
 import { SilentProofBadge } from "@/components/SilentProofBadge";
 import { useReadContracts } from "wagmi";
@@ -95,6 +97,17 @@ export default function ProfilePage() {
   const attestations = (attestationUIDs as `0x${string}`[] | undefined) ?? [];
   const sbts = sbtDetails ?? [];
 
+  // Fetch EAS attestation details to decode platformId
+  const { data: attestationDetails } = useReadContracts({
+    contracts: attestations.map((uid) => ({
+      address: EAS_ADDRESS as `0x${string}`,
+      abi: EAS_ABI,
+      functionName: "getAttestation",
+      args: [uid],
+    })),
+    query: { enabled: attestations.length > 0, staleTime: 10000 },
+  });
+
   // Extract AI Code Audit scores from SBT certifications
   const aiAuditScores = (sbtDetails || []).map((res: { result?: unknown }) => {
     if (!res.result) return null;
@@ -137,14 +150,13 @@ export default function ProfilePage() {
       return;
     }
 
-    const parsed = isAddress(trimmed);
-    if (!parsed) {
+    if (!isAddress(trimmed)) {
       setInputError(t.profile?.errors?.invalid || "Invalid Ethereum address.");
       return;
     }
 
     setInputError(null);
-    setSearchedAddress(parsed as `0x${string}`);
+    setSearchedAddress(trimmed as `0x${string}`);
   }, [inputValue, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -187,8 +199,13 @@ export default function ProfilePage() {
   };
 
   // Shorten address for display
-  const shortenAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  const shortenAddress = (addr: unknown): string => {
+    if (!addr) return 'Invalid address';
+    const str = typeof addr === 'string' ? addr : String(addr);
+    if (str.length >= 10) {
+      return `${str.slice(0, 6)}…${str.slice(-4)}`;
+    }
+    return str;
   };
 
   return (
@@ -569,9 +586,29 @@ export default function ProfilePage() {
                     </h3>
                   </div>
                   <div className="flex flex-col gap-3 animate-in fade-in duration-1000">
-                    {attestations.map((uid: `0x${string}`, i: number) => (
-                      <SilentProofBadge key={uid} attestation={{ uid }} index={i} />
-                    ))}
+                    {attestations.map((uid: `0x${string}`, i: number) => {
+                      const detail = (attestationDetails || []).find(
+                        (d: { result?: { uid: string } }) => d.result?.uid === uid
+                      ) as { result?: { data: `0x${string}` } } | undefined;
+                      let platformId: string | undefined = undefined;
+                      if (detail?.result?.data) {
+                        try {
+                          const [pid] = decodeAbiParameters(
+                            [{ type: "bytes32" }, { type: "uint256" }, { type: "bool" }],
+                            detail.result.data
+                          );
+                          platformId = pid as string;
+                        } catch { /* no-op */ }
+                      }
+                      return (
+                        <SilentProofBadge
+                          key={uid}
+                          attestation={{ uid }}
+                          platformId={platformId}
+                          index={i}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

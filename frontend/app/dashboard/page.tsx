@@ -900,7 +900,7 @@ export default function SilentDashboard() {
                             >
                               {isTxPending ? (
                                 <div className="flex items-center justify-center gap-2 sm:gap-3">
-                                  <Loader2 className="animate-spin" size={16} className="sm:size-5" />
+                                  <Loader2 className="animate-spin sm:size-5" size={16} />
                                   <span className="text-sm sm:text-base">{t.onboarding.anchoring}</span>
                                 </div>
                               ) : t.dashboard.proofModal.anchorChain}

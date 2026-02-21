@@ -21,7 +21,7 @@ export function Header({ maxWidthClass = "max-w-7xl" }: { maxWidthClass?: string
 
     const isAppPage = pathname === "/dashboard" || pathname === "/profile";
 
-    const navLinks = isAppPage ? [
+    const navLinks: { href: string; label: string; show?: boolean }[] = isAppPage ? [
         { href: "/profile", label: t.header.explorer, show: pathname !== "/profile" },
         { href: "/dashboard", label: t.header.portal, show: pathname !== "/dashboard" },
     ] : [

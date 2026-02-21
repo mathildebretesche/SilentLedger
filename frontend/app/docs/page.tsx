@@ -6,7 +6,10 @@ import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
-const docsSections = [
+type DocEntry = { title: string; description: string; href: string; icon: string; external?: boolean; isAnchor?: boolean };
+type DocsSection = { title: string; docs: DocEntry[] };
+
+const docsSections: DocsSection[] = [
   {
     title: "Protocol Documentation",
     docs: [

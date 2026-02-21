@@ -135,6 +135,8 @@ export const hi = {
     problem2Verification: "सत्यापन",
     problem2And: "और",
     problem2Privacy: "गोपनीयता",
+    solutionTitle1: "द साइलेंट",
+    solutionTitle2: "जवाब।",
     problemSolutionTitle1: "द साइलेंट",
     problemSolutionTitle2: "जवाब।",
     solutionDesc:
