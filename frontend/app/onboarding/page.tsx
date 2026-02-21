@@ -16,6 +16,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import {
   Github,
@@ -35,18 +36,14 @@ import {
 } from "@/lib/contracts";
 import { TxStatus } from "@/components/TxStatus";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
-
-// ── Étapes d'onboarding visibles en haut ────────────────────────────────────
-const STEPS = [
-  { id: 1, label: "Connectez votre wallet" },
-  { id: 2, label: "Prouvez un compte" },
-  { id: 3, label: "Bienvenue sur le dashboard" },
-];
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
+  const { t } = useTranslation();
+  const STEPS = t.onboarding.steps;
 
   // ── Redirections ───────────────────────────────────────────────────────────
   // Auparavant il y avait un redirect vers /enter si non connecté.
@@ -67,7 +64,7 @@ export default function OnboardingPage() {
     });
 
   // ── Mode développement ───────────────────────────────────────────────────
-  const DEV_BYPASS_ONBOARDING = true; // Remis à false en prod pour bien rediriger vers dashboard si déjà onboardé
+  // const DEV_BYPASS_ONBOARDING = true; // Désactivé en prod
 
   // Redirection automatique si des attestations existent déjà
   useEffect(() => {
@@ -202,11 +199,12 @@ export default function OnboardingPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen flex flex-col"
       style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
     >
+      <Header />
       <main
-        className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 min-h-screen flex flex-col justify-center py-8"
+        className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 flex-1 flex flex-col justify-center py-8"
         style={{ animation: "fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
       >
         {/* ── En-tête ─────────────────────────────────────────────────────── */}
@@ -240,9 +238,8 @@ export default function OnboardingPage() {
             className="text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium tracking-tight"
             style={{ color: "var(--text-secondary)" }}
           >
-            Prouvez au moins un compte pour créer votre identité souveraine
-            anonyme. <br className="hidden sm:block" />
-            <span style={{ color: "var(--text-muted)" }}>Aucune donnée personnelle n&apos;est stockée.</span>
+            {t.onboarding.subtitle} <br className="hidden sm:block" />
+            <span style={{ color: "var(--text-muted)" }}>{t.onboarding.subtitleNote}</span>
           </p>
         </div>
 
@@ -296,10 +293,10 @@ export default function OnboardingPage() {
                 <div className="mb-8">
                   <Shield size={48} style={{ color: "var(--text-primary)" }} className="opacity-80 mx-auto mb-6" />
                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3" style={{ color: "var(--text-primary)" }}>
-                    Authentification
+                    {t.onboarding.authTitle}
                   </h2>
                   <p style={{ fontSize: 16, color: "var(--text-secondary)", maxWidth: "320px", margin: "0 auto" }}>
-                    Un portefeuille Web3 est requis pour chiffrer et stocker vos preuves.
+                    {t.onboarding.authDesc}
                   </p>
                 </div>
                 <ConnectButton.Custom>
@@ -332,7 +329,7 @@ export default function OnboardingPage() {
                                 className="btn-stamp"
                                 style={{ padding: "12px 24px", fontSize: 14 }}
                               >
-                                Connecter mon portefeuille
+                                {t.onboarding.connectWallet}
                               </button>
                             );
                           }
@@ -362,10 +359,10 @@ export default function OnboardingPage() {
                     className="text-2xl font-black tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Identité Sécurisée !
+                    {t.onboarding.securedTitle}
                   </h3>
                   <p className="font-medium" style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-                    Vos preuves sont ancrées. Redirection en cours...
+                    {t.onboarding.securedDesc}
                   </p>
                 </div>
                 <Loader2 size={24} className="animate-spin mt-2" style={{ color: "var(--accent-light)" }} />
@@ -384,10 +381,10 @@ export default function OnboardingPage() {
                     className="text-3xl sm:text-4xl font-bold tracking-tight"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Sélectionnez une plateforme
+                    {t.onboarding.selectPlatform}
                   </h2>
                   <p className="text-base sm:text-lg max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>
-                    Prouvez la possession de votre compte de manière anonyme via zkTLS.
+                    {t.onboarding.selectPlatformDesc}
                   </p>
                 </div>
 
@@ -425,12 +422,12 @@ export default function OnboardingPage() {
                     {isGenerating ? (
                       <>
                         <Loader2 size={20} className="animate-spin" />
-                        Génération ZK ({selectedPlatform})…
+                        {t.onboarding.generating} ({selectedPlatform})…
                       </>
                     ) : (
                       <>
                         <Shield size={20} className="group-hover:scale-110 transition-transform" />
-                        Prouver {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
+                        {t.onboarding.prove} {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}
                       </>
                     )}
                   </button>
@@ -465,9 +462,9 @@ export default function OnboardingPage() {
                           <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-8 border-2 border-green-500/30 animate-success-check mx-auto">
                             <CheckCircle2 size={48} className="text-green-500" />
                           </div>
-                          <h4 className="text-3xl font-black mb-3 tracking-tight text-primary">Vérification Validée</h4>
+                          <h4 className="text-3xl font-black mb-3 tracking-tight text-primary">{t.onboarding.successTitle}</h4>
                           <p className="text-secondary font-medium opacity-90 max-w-[240px] mx-auto">
-                            Votre identité a été ancrée avec succès. Bienvenue on-chain.
+                            {t.onboarding.successDesc}
                           </p>
                         </div>
                       ) : (
@@ -478,9 +475,9 @@ export default function OnboardingPage() {
 
                           {!zkProof ? (
                             <>
-                              <h4 className="text-2xl font-black mb-4 tracking-tight text-primary">Scannez pour prouver</h4>
+                              <h4 className="text-2xl font-black mb-4 tracking-tight text-primary">{t.onboarding.scanTitle}</h4>
                               <p className="text-secondary mb-10 text-sm font-medium leading-relaxed opacity-90">
-                                Utilisez l&apos;application Reclaim pour générer la preuve ZK de votre compte {selectedPlatform}.
+                                {t.onboarding.scanDesc}
                               </p>
                               {proofUrl && (
                                 <div className="bg-white p-6 rounded-3xl shadow-xl mb-6 mx-auto inline-block transform hover:scale-[1.02] transition-transform">
@@ -489,7 +486,7 @@ export default function OnboardingPage() {
                               )}
                               <div className="flex items-center justify-center gap-2 text-accent-light font-black text-xs uppercase tracking-widest">
                                 <div className="pulse-dot" />
-                                Session active...
+                                {t.onboarding.sessionActive}
                               </div>
                             </>
                           ) : (
@@ -497,9 +494,9 @@ export default function OnboardingPage() {
                               <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-8 border border-green-500/20 mx-auto">
                                 <CheckCircle2 size={40} className="text-green-500" />
                               </div>
-                              <h4 className="text-2xl font-black mb-2 tracking-tight text-primary text-center">Preuve ZK prête !</h4>
+                              <h4 className="text-2xl font-black mb-2 tracking-tight text-primary text-center">{t.onboarding.zkReady}</h4>
                               <p className="text-secondary mb-10 text-sm font-medium text-center">
-                                Score : <strong className="text-primary">{reputationScore?.toString()} pts</strong>
+                                {t.onboarding.score} : <strong className="text-primary">{reputationScore?.toString()} {t.onboarding.pts}</strong>
                               </p>
 
                               <button
@@ -510,9 +507,9 @@ export default function OnboardingPage() {
                                 {isTxPending ? (
                                   <div className="flex items-center justify-center gap-3">
                                     <Loader2 className="animate-spin" />
-                                    <span>Ancrage...</span>
+                                    <span>{t.onboarding.anchoring}</span>
                                   </div>
-                                ) : "Créer mon ID On-Chain"}
+                                ) : t.onboarding.createId}
                               </button>
                             </div>
                           )}
@@ -539,9 +536,7 @@ export default function OnboardingPage() {
             className="text-center font-medium opacity-60 hover:opacity-100 transition-opacity mt-6 sm:mt-8 px-6"
             style={{ color: "var(--text-secondary)", fontSize: "13px" }}
           >
-            Minimum 1 compte prouvé requis pour accéder à l&apos;écosystème.
-            <br />
-            Le processus est cryptographiquement sécurisé et préserve votre anonymat.
+            {t.onboarding.footerNote}
           </p>
         )}
       </main>

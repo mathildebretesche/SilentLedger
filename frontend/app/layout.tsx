@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { Web3Provider } from "@/providers/Web3Provider";
 import { AppBackground } from "@/components/AppBackground";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export const metadata: Metadata = {
   title: "Silent Ledger – Proof of Intelligence",
@@ -17,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -25,12 +26,15 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        <link rel="icon" href="/logo.png" sizes="32x32" type="image/png" />
       </head>
       <body>
-        <Web3Provider>
-          <AppBackground />
-          {children}
-        </Web3Provider>
+        <LanguageProvider>
+          <Web3Provider>
+            <AppBackground />
+            {children}
+          </Web3Provider>
+        </LanguageProvider>
       </body>
     </html>
   );

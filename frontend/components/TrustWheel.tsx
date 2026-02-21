@@ -21,12 +21,36 @@ export function TrustWheel({ value = 0 }: { value: number }) {
         return () => clearTimeout(timer);
     }, [normalizedValue, circumference]);
 
+    // Dynamic Color Palette Logic
+    const getColors = (val: number) => {
+        if (val >= 80) return {
+            start: "#10b981", // Emerald 500
+            end: "#059669",   // Emerald 600
+            glow: "rgba(16, 185, 129, 0.2)",
+            text: "#065f46"   // Emerald 800
+        };
+        if (val >= 50) return {
+            start: "#3b82f6", // Blue 500
+            end: "#1d4ed8",   // Blue 700
+            glow: "rgba(59, 130, 246, 0.2)",
+            text: "#1e40af"   // Blue 800
+        };
+        return {
+            start: "#64748b", // Slate 500
+            end: "#334155",   // Slate 700
+            glow: "rgba(100, 116, 139, 0.2)",
+            text: "#1e293b"   // Slate 800
+        };
+    };
+
+    const colors = getColors(normalizedValue);
+
     return (
         <div className="relative flex items-center justify-center w-[320px] h-[320px] animate-in fade-in zoom-in duration-1000">
             {/* Dynamic Background Glow */}
             <div
-                className="absolute inset-[20%] rounded-full opacity-30 blur-[60px] transition-colors duration-1000"
-                style={{ background: normalizedValue > 50 ? "var(--accent)" : "#94a3b8" }}
+                className="absolute inset-[20%] rounded-full opacity-30 blur-[60px] transition-all duration-1000"
+                style={{ background: colors.glow }}
             />
 
             <svg className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_30px_rgba(32,52,159,0.1)]" viewBox="0 0 240 240">
@@ -57,8 +81,8 @@ export function TrustWheel({ value = 0 }: { value: number }) {
 
                 <defs>
                     <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="var(--accent)" />
-                        <stop offset="100%" stopColor="var(--accent-light)" />
+                        <stop offset="0%" stopColor={colors.start} />
+                        <stop offset="100%" stopColor={colors.end} />
                     </linearGradient>
                 </defs>
             </svg>
@@ -80,9 +104,9 @@ export function TrustWheel({ value = 0 }: { value: number }) {
                 <div
                     className="px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border transition-all duration-500 shadow-sm"
                     style={{
-                        background: normalizedValue > 70 ? "rgba(34,197,94,0.08)" : "rgba(32,52,159,0.04)",
-                        borderColor: normalizedValue > 70 ? "rgba(34,197,94,0.15)" : "rgba(32,52,159,0.15)",
-                        color: normalizedValue > 70 ? "#16a34a" : "var(--accent)",
+                        background: `${colors.start}15`,
+                        borderColor: `${colors.start}30`,
+                        color: colors.text,
                         backdropFilter: "blur(10px)"
                     }}
                 >

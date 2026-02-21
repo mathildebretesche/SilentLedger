@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { X, User, Search, ArrowRight } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export function LaunchOverlay({
     isOpen,
@@ -10,6 +11,7 @@ export function LaunchOverlay({
     onClose: () => void;
 }) {
     const [visible, setVisible] = useState(false);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (isOpen) {
@@ -77,8 +79,8 @@ export function LaunchOverlay({
 
                     <div className="flex items-start justify-between mb-16 relative z-10">
                         <div>
-                            <h2 className="text-5xl sm:text-6xl font-black tracking-tighter mb-3 text-primary" style={{ textShadow: "0 4px 20px rgba(255,255,255,0.4)" }}>ACCESS.</h2>
-                            <p className="text-secondary font-medium tracking-wide text-lg opacity-80">Select your point of entry.</p>
+                            <h2 className="text-5xl sm:text-6xl font-black tracking-tighter mb-3 text-primary" style={{ textShadow: "0 4px 20px rgba(255,255,255,0.4)" }}>{t.launchOverlay.title}</h2>
+                            <p className="text-secondary font-medium tracking-wide text-lg opacity-80">{t.launchOverlay.subtitle}</p>
                         </div>
                         <button
                             onClick={handleClose}
@@ -104,11 +106,11 @@ export function LaunchOverlay({
                                 <div className="w-16 h-16 rounded-3xl bg-white/20 flex items-center justify-center mb-10 shrink-0 border border-white/30 shadow-inner group-hover:scale-110 transition-transform duration-500">
                                     <User size={32} className="text-white drop-shadow-md" />
                                 </div>
-                                <h3 className="text-3xl font-black mb-3 tracking-tight">Portal</h3>
-                                <p className="text-white/80 font-medium mb-8">Access your sovereign identity and private dashboards.</p>
+                                <h3 className="text-3xl font-black mb-3 tracking-tight">{t.launchOverlay.portal.title}</h3>
+                                <p className="text-white/80 font-medium mb-8">{t.launchOverlay.portal.description}</p>
 
                                 <div className="mt-auto flex items-center justify-between">
-                                    <span className="font-bold text-sm uppercase tracking-widest text-white/90">Claim Identity</span>
+                                    <span className="font-bold text-sm uppercase tracking-widest text-white/90">{t.launchOverlay.portal.cta}</span>
                                     <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-accent transition-colors duration-300">
                                         <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-300" />
                                     </div>
@@ -130,11 +132,11 @@ export function LaunchOverlay({
                                 <div className="w-16 h-16 rounded-3xl bg-black/5 flex items-center justify-center mb-10 shrink-0 border border-white/40 shadow-sm group-hover:scale-110 group-hover:bg-white transition-all duration-500">
                                     <Search size={32} className="text-accent drop-shadow-sm" />
                                 </div>
-                                <h3 className="text-3xl font-black mb-3 text-primary tracking-tight">Explorer</h3>
-                                <p className="text-secondary/80 font-medium mb-8">Search the immutable ledger of anonymous verifications.</p>
+                                <h3 className="text-3xl font-black mb-3 text-primary tracking-tight">{t.launchOverlay.explorer.title}</h3>
+                                <p className="text-secondary/80 font-medium mb-8">{t.launchOverlay.explorer.description}</p>
 
                                 <div className="mt-auto flex items-center justify-between">
-                                    <span className="font-bold text-sm uppercase tracking-widest text-secondary group-hover:text-accent transition-colors duration-300">Search Ledger</span>
+                                    <span className="font-bold text-sm uppercase tracking-widest text-secondary group-hover:text-accent transition-colors duration-300">{t.launchOverlay.explorer.cta}</span>
                                     <div className="w-10 h-10 rounded-full border border-black/10 flex items-center justify-center group-hover:border-accent group-hover:bg-accent group-hover:text-white transition-all duration-300">
                                         <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-300" />
                                     </div>

@@ -10,10 +10,12 @@ import {
   Shield,
   Zap,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export default function HomePage() {
   const [showOverlay, setShowOverlay] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const { t } = useTranslation();
 
   const handleOpen = () => setShowOverlay(true);
   const handleClose = () => setShowOverlay(false);
@@ -63,17 +65,17 @@ export default function HomePage() {
       >
         <div className="flex-1 text-center lg:text-left" style={{ transform: `translateY(${scrollY * -0.05}px)` }}>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-[11px] font-bold uppercase tracking-wider text-accent mb-8">
-            Digital Sovereignty Network
+            {t.home.badge}
           </div>
 
           <h1 className="text-7xl lg:text-[110px] font-[900] tracking-tighter leading-[0.8] mb-10">
-            <span className="block text-primary">THE SILENT</span>
-            <span className="text-transparent" style={{ WebkitTextStroke: "1.5px rgba(15,23,42,0.4)" }}>REVOLUTION.</span>
+            <span className="block text-primary">{t.home.heroTitle1}</span>
+            <span className="text-transparent" style={{ WebkitTextStroke: "1.5px rgba(15,23,42,0.4)" }}>{t.home.heroTitle2}</span>
           </h1>
 
           <p className="text-xl text-secondary max-w-md mb-12 leading-relaxed font-medium">
-            Your contributions. Your reputation. <br />
-            <span className="text-primary font-bold italic">Completely Anonymous.</span>
+            {t.home.heroSubtitle1} <br />
+            <span className="text-primary font-bold italic">{t.home.heroSubtitle2}</span>
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -81,7 +83,7 @@ export default function HomePage() {
               onClick={handleOpen}
               className="group relative flex items-center gap-3 px-10 py-5 bg-accent text-white rounded-2xl font-bold text-lg overflow-hidden transition-all hover:bg-accent-light hover:shadow-[0_20px_40px_rgba(32,52,159,0.3)] active:scale-95"
             >
-              <span className="relative z-10">Get Started</span>
+              <span className="relative z-10">{t.home.cta}</span>
               <ArrowRight size={20} className="relative z-10 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
@@ -122,17 +124,15 @@ export default function HomePage() {
       >
         <div style={{ transform: `translateY(${scrollY * -0.02}px)` }}>
           <h2 className="text-5xl lg:text-[80px] font-black tracking-tighter leading-[0.9] mb-10 text-primary">
-            REPUTATION IS <br />
-            <span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(15,23,42,0.4)" }}>TRAPPED.</span>
+            {t.home.problemTitle1} <br />
+            <span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(15,23,42,0.4)" }}>{t.home.problemTitle2}</span>
           </h2>
           <div className="space-y-8 text-xl text-secondary leading-relaxed font-medium max-w-2xl">
             <p>
-              Every day, you contribute to the global knowledge pool. On GitHub, Discord, Slack.
-              You build value, but <span className="text-primary font-bold">you don&apos;t own it.</span>
+              {t.home.problem1} <span className="text-primary font-bold">{t.home.problem1Bold}</span>
             </p>
             <p>
-              To prove your expertise, you must expose your identity, your history, and your private tokens.
-              You are forced to choose between <span className="text-accent font-bold">Verification</span> and <span className="text-accent font-bold">Privacy.</span>
+              {t.home.problem2} <span className="text-accent font-bold">{t.home.problem2Verification}</span> {t.home.problem2And} <span className="text-accent font-bold">{t.home.problem2Privacy}</span>
             </p>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function HomePage() {
         ref={(el) => { if (el) sectionRefs.current["solution"] = el; }}
         className={`relative z-10 py-32 px-8 max-w-7xl mx-auto w-full transition-all duration-1000 ${isVisible["solution"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-24"}`}
       >
-        <div className="glass-card text-primary rounded-[60px] p-12 lg:p-24 overflow-hidden relative group border-white/20">
+        <div className="glass-card text-primary rounded-[60px] p-12 lg:p-24 overflow-hidden relative group">
           <div
             className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent blur-[140px] rounded-full transition-transform duration-700 ease-out opacity-20"
             style={{ transform: `translate(30%, -30%) translateY(${scrollY * 0.1}px)` }}
@@ -156,31 +156,30 @@ export default function HomePage() {
                 <Fingerprint size={32} className="text-accent" />
               </div>
               <h2 className="text-5xl lg:text-7xl font-black tracking-tighter leading-none mb-10 text-primary">
-                THE SILENT <br />
-                <span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(15,23,42,0.3)" }}>RESPONSE.</span>
+                {t.home.solutionTitle1} <br />
+                <span className="text-transparent" style={{ WebkitTextStroke: "1px rgba(15,23,42,0.3)" }}>{t.home.solutionTitle2}</span>
               </h2>
               <p className="text-xl text-secondary leading-relaxed font-medium mb-12">
-                Silent Ledger uses <span className="text-primary font-bold">zkTLS</span> to bridge your Web2 reputation to the chain without ever seeing your secrets.
-                Verifiable. Anonymous. Sovereign.
+                {t.home.solutionDesc}
               </p>
               <button
                 onClick={handleOpen}
                 className="px-10 py-5 bg-accent text-white rounded-2xl font-black text-lg hover:bg-accent-light transition-all flex items-center gap-3 shadow-[0_10px_30px_rgba(32,52,159,0.3)]"
               >
-                Join the Protocol <ArrowRight size={20} />
+                {t.home.solutionCta} <ArrowRight size={20} />
               </button>
             </div>
 
             <div className="lg:w-1/2 grid grid-cols-2 gap-4">
               {[
-                { label: "zkTLS", sub: "MPC-TLS Tech", speed: 0.02 },
-                { label: "EAS", sub: "Global Standards", speed: -0.025 },
-                { label: "100%", label2: "Private", type: "stat", speed: 0.02 },
-                { label: "0", label2: "Storage", type: "stat", speed: -0.025 }
+                { label: t.home.stats.zktls.label, sub: t.home.stats.zktls.sub, speed: 0.02 },
+                { label: t.home.stats.eas.label, sub: t.home.stats.eas.sub, speed: -0.025 },
+                { label: t.home.stats.private.label, label2: t.home.stats.private.sub, type: "stat", speed: 0.02 },
+                { label: t.home.stats.storage.label, label2: t.home.stats.storage.sub, type: "stat", speed: -0.025 }
               ].map((item, i) => (
                 <div
                   key={i}
-                  className="p-8 border border-white/40 rounded-[32px] glass-card backdrop-blur-md transition-transform duration-500 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.4)] text-primary"
+                  className="glass-card p-8 rounded-[32px] transition-transform duration-500 text-primary"
                   style={{ transform: `translateY(${scrollY * item.speed}px)` }}
                 >
                   {item.type === "stat" ? (

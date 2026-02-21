@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 /**
  * AmbientBackground – Centralized background elements
  * Large blurred blobs and animated grid for visual consistency across pages.

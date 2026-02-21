@@ -10,18 +10,20 @@
  *      Si attestations = 0  → redirige vers /onboarding
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useReadContract } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { Fingerprint, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 import { SILENT_LEDGER_ATTESTER_ABI, ATTESTER_ADDRESS } from "@/lib/contracts";
 
 export default function EnterPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
-  const modalOpened = useRef(false);
+  const { t } = useTranslation();
+  // const modalOpened = useRef(false); // Désactivé car non utilisé
 
   // Ouvre le modal de connexion dès le montage si non connecté
   // Désactivé à la demande de l'utilisateur : la popup ne doit pas s'ouvrir seule.
@@ -114,15 +116,15 @@ export default function EnterPage() {
             className="text-4xl font-black tracking-tighter mb-3"
             style={{ color: "var(--text-primary)" }}
           >
-            {isConnected ? "Chargement…" : "Connexion requise"}
+            {isConnected ? t.enter.loading : t.enter.connectionRequired}
           </h1>
           <p
             className="text-sm max-w-xs leading-relaxed"
             style={{ color: "var(--text-secondary)" }}
           >
             {isConnected
-              ? "Vérification de votre identité souveraine en cours…"
-              : "Connectez votre portefeuille pour accéder à Silent Ledger."}
+              ? t.enter.verifyingIdentity
+              : t.enter.connectWallet}
           </p>
         </div>
 
@@ -142,7 +144,7 @@ export default function EnterPage() {
               ((e.target as HTMLButtonElement).style.background = "var(--accent)")
             }
           >
-            Connecter le portefeuille
+            {t.enter.connectWalletButton}
           </button>
         )}
       </div>

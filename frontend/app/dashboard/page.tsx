@@ -32,7 +32,8 @@ import {
   Brain,
   Code2,
   ShieldCheck,
-  Wallet
+  Wallet,
+  AlertCircle
 } from "lucide-react";
 
 import { initPlatformProof, type ZKProof, type SupportedPlatform } from "@/services/ReclaimService";
@@ -47,16 +48,18 @@ import {
 
 import { SilentProofBadge } from "@/components/SilentProofBadge";
 import { BadgeSkeleton } from "@/components/BadgeSkeleton";
-import { SBTBadge } from "@/components/SBTBadge";
+// import { SBTBadge } from "@/components/SBTBadge";
 import { TxStatus } from "@/components/TxStatus";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { keccak256, toBytes, decodeAbiParameters } from "viem";
 import { TrustWheel } from "@/components/TrustWheel";
+import { useTranslation } from "@/lib/i18n/LanguageContext";
 
 export default function SilentDashboard() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Redirection si déconnecté
   useEffect(() => {
@@ -158,7 +161,6 @@ export default function SilentDashboard() {
   // Lecture des SBT On-chain
   const {
     data: sbtIdsData,
-    isLoading: isLoadingSbts,
   } = useReadContract({
     address: SBT_ADDRESS,
     abi: CERTIFICATION_SBT_ABI,
@@ -445,12 +447,12 @@ export default function SilentDashboard() {
       <main className="relative z-10 w-full flex flex-col gap-12 sm:gap-20 pb-32">
         {/* ── TABS NAVIGATION ─────────────────────────────────────────── */}
         <section className="max-w-6xl mx-auto w-full px-6 pt-12">
-          <div className="flex flex-wrap justify-center gap-2 p-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl w-fit mx-auto">
+          <div className="flex flex-wrap justify-center gap-2 p-1 glass-panel rounded-2xl w-fit mx-auto shadow-sm">
             {[
-              { id: "overview", label: "Overview", icon: Shield },
-              { id: "legitimacy", label: "Légitimité", icon: Zap },
-              { id: "audit", label: "Code Audit", icon: Brain },
-              { id: "attestations", label: "Attestations", icon: ShieldCheck },
+              { id: "overview", label: t.dashboard.tabs.overview, icon: Shield },
+              { id: "legitimacy", label: t.dashboard.tabs.legitimacy, icon: Zap },
+              { id: "audit", label: t.dashboard.tabs.audit, icon: Brain },
+              { id: "attestations", label: t.dashboard.tabs.attestations, icon: ShieldCheck },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -473,19 +475,19 @@ export default function SilentDashboard() {
             <TrustWheel value={trustScore} />
 
             <p className="text-lg sm:text-xl font-medium tracking-tight text-secondary max-w-2xl mb-16 mt-8">
-              Votre réputation est maintenant ancrée <br className="hidden sm:block" /> et
-              <span className="text-primary font-bold italic ml-2">totalement anonyme.</span>
+              {t.dashboard.overview.subtitle} <br className="hidden sm:block" /> et
+              <span className="text-primary font-bold italic ml-2">{t.dashboard.overview.subtitleBold}</span>
             </p>
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
               {[
-                { label: "Silent Proofs", value: attestations.length.toString(), icon: Shield },
-                { label: "Credentials", value: sbtIds.length.toString(), icon: Zap },
-                { label: "Status", value: "Verified", icon: CheckCircle2 },
-                { label: "Network", value: "Sepolia", icon: Wallet }
+                { label: t.dashboard.overview.stats.silentProofs, value: attestations.length.toString(), icon: Shield },
+                { label: t.dashboard.overview.stats.credentials, value: sbtIds.length.toString(), icon: Zap },
+                { label: t.dashboard.overview.stats.status, value: t.dashboard.overview.stats.verified, icon: CheckCircle2 },
+                { label: t.dashboard.overview.stats.network, value: "Sepolia", icon: Wallet }
               ].map((stat, i) => (
-                <div key={i} className="glass-card p-6 flex flex-col items-center gap-2 border-white/20">
+                <div key={i} className="glass-card p-6 flex flex-col items-center gap-2">
                   <stat.icon size={16} className="text-accent opacity-60" />
                   <span className="text-2xl font-black tabular-nums">{stat.value}</span>
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted">{stat.label}</span>
@@ -499,23 +501,23 @@ export default function SilentDashboard() {
         {activeTab === "legitimacy" && (
           <section className="max-w-5xl mx-auto w-full px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col items-center mb-16 text-center">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">Reputation Engine</h2>
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">{t.dashboard.legitimacy.eyebrow}</h2>
               <h3 className="text-4xl sm:text-5xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Boostez votre légitimité.
+                {t.dashboard.legitimacy.title}
               </h3>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
               {[
-                { id: "github", label: "GitHub", icon: <Github size={32} />, color: "bg-white/40", text: "Vérifiez vos contributions anonymement.", hash: keccak256(toBytes("github")) },
-                { id: "x", label: "X / Twitter", icon: <Twitter size={32} />, color: "bg-blue-500/10", text: "Prouvez votre influence sociale.", hash: keccak256(toBytes("x")) },
-                { id: "linkedin", label: "LinkedIn", icon: <Linkedin size={32} />, color: "bg-blue-700/10", text: "Certifiez votre carrière pro.", hash: keccak256(toBytes("linkedin")) },
-                { id: "farcaster", label: "Farcaster", icon: <Shield size={32} />, color: "bg-purple-500/10", text: "Prouvez votre identité décentralisée.", hash: keccak256(toBytes("farcaster")) },
+                { id: "github", label: "GitHub", icon: <Github size={32} />, color: "bg-white/40", text: t.dashboard.legitimacy.platforms.github, hash: keccak256(toBytes("github")) },
+                { id: "x", label: "X / Twitter", icon: <Twitter size={32} />, color: "bg-blue-500/10", text: t.dashboard.legitimacy.platforms.x, hash: keccak256(toBytes("x")) },
+                { id: "linkedin", label: "LinkedIn", icon: <Linkedin size={32} />, color: "bg-blue-700/10", text: t.dashboard.legitimacy.platforms.linkedin, hash: keccak256(toBytes("linkedin")) },
+                { id: "farcaster", label: "Farcaster", icon: <Shield size={32} />, color: "bg-purple-500/10", text: t.dashboard.legitimacy.platforms.farcaster, hash: keccak256(toBytes("farcaster")) },
               ].map((p) => {
                 const isPlatformVerified = verifiedPlatforms.includes(p.hash);
 
                 return (
-                  <div key={p.id} className="glass-card p-8 border-white/30 flex flex-col justify-between group transition-all duration-500 hover:scale-[1.01]">
+                  <div key={p.id} className="glass-card p-8 flex flex-col justify-between group transition-all duration-500">
                     <div>
                       <div className={`w-14 h-14 rounded-2xl ${p.color} flex items-center justify-center mb-6 shadow-sm`}>
                         <div className="text-primary">{p.icon}</div>
@@ -530,7 +532,7 @@ export default function SilentDashboard() {
                       isPlatformVerified ? (
                         <div className="flex items-center gap-2 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500">
                           <CheckCircle2 size={18} />
-                          <span className="font-bold text-sm">Vérifié</span>
+                          <span className="font-bold text-sm">{t.dashboard.legitimacy.verified}</span>
                         </div>
                       ) : (
                         <button
@@ -539,7 +541,7 @@ export default function SilentDashboard() {
                           disabled={isGenerating || isTxPending}
                         >
                           {isGenerating && activePlatform === p.id ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                          Prouver account
+                          {t.dashboard.legitimacy.proveAccount}
                         </button>
                       )
                     )}
@@ -554,24 +556,24 @@ export default function SilentDashboard() {
         {activeTab === "audit" && (
           <section className="max-w-5xl mx-auto w-full px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col items-center mb-16 text-center">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">AI Audit</h2>
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">{t.dashboard.audit.eyebrow}</h2>
               <h3 className="text-4xl sm:text-5xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
-                Qualité du code certifiée.
+                {t.dashboard.audit.title}
               </h3>
             </div>
 
-            <div className="glass-card p-10 sm:p-14 border-white/30 flex flex-col items-center group transition-all duration-500 hover:scale-[1.01]">
+            <div className="glass-card p-10 sm:p-14 flex flex-col items-center group transition-all duration-500">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 shadow-sm border border-primary/20">
                 <Brain size={32} className="text-primary" />
               </div>
               <h4 className="text-3xl font-black mb-2 tracking-tight">AI Code Quality Audit</h4>
               <p className="text-lg text-secondary mb-8 leading-relaxed opacity-80 text-center max-w-2xl">
-                Évaluez la qualité de code d&apos;un compte GitHub de façon respectueuse de la vie privée. L&apos;IA analyse les métadonnées publiques pour attribuer un score de qualité sans jamais lire le code source privé.
+                {t.dashboard.audit.desc}
               </p>
 
               {/* SECTION AFFICHAGE DU SCORE ON-CHAIN */}
-              <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 text-center flex flex-col items-center">
-                <span className="text-[10px] uppercase font-black tracking-widest text-muted mb-2">Historique Blockchain</span>
+              <div className="w-full max-w-md glass-panel rounded-2xl p-6 mb-8 text-center flex flex-col items-center shadow-sm">
+                <span className="text-[10px] uppercase font-black tracking-widest text-muted mb-2">{t.dashboard.audit.blockchainHistory}</span>
                 {isLoadingCertifications ? (
                   <Loader2 size={24} className="animate-spin text-secondary mb-2" />
                 ) : latestAiScore ? (
@@ -580,38 +582,41 @@ export default function SilentDashboard() {
                       {latestAiScore.score} <span className="text-lg text-muted">/100</span>
                     </div>
                     <p className="text-xs text-secondary opacity-80">
-                      Dernier audit certifié le {new Date(latestAiScore.date).toLocaleDateString()}
+                      {t.dashboard.audit.lastCertified} {new Date(latestAiScore.date).toLocaleDateString()}
                     </p>
                   </>
                 ) : (
                   <div className="h-12 flex items-center justify-center">
                     <p className="text-sm font-medium text-secondary opacity-80 italic">
-                      Aucun score de qualité de code n&apos;est enregistré sur la blockchain pour le moment.
+                      {t.dashboard.audit.noScore}
                     </p>
                   </div>
                 )}
               </div>
 
               {!verifiedUsername ? (
-                <div className="w-full max-w-md bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-6 text-center mb-8 flex flex-col items-center gap-4">
-                  <p className="text-yellow-500/90 text-sm font-medium">
-                    Pour garantir l&apos;authenticité de l&apos;audit et préserver votre vie privée, vous devez prouver que vous possédez le compte GitHub à analyser.
-                    Cette vérification est requise à chaque nouvelle session.
+                <div className="w-full max-w-md bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 mb-8 flex flex-col gap-4 shadow-sm">
+                  <div className="flex items-center gap-3 text-amber-700">
+                    <AlertCircle size={20} className="shrink-0" />
+                    <span className="font-bold text-xs uppercase tracking-widest">{t.dashboard.audit.requireAction}</span>
+                  </div>
+                  <p className="text-amber-900/80 text-sm font-medium leading-relaxed text-left">
+                    {t.dashboard.audit.requireDesc}
                   </p>
                   <button
-                    className="btn-stamp w-full flex items-center justify-center gap-2 text-sm font-bold py-3 px-6 hover:bg-accent hover:text-white transition-all border border-accent/20"
+                    className="btn-stamp w-full flex items-center justify-center gap-2 text-sm font-bold py-3 px-6 hover:bg-accent hover:text-white transition-all border border-accent/20 mt-2"
                     onClick={() => handleStampIntelligence("github")}
                     disabled={isGenerating || isTxPending}
                   >
                     {isGenerating && activePlatform === "github" ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                    Vérifier mon GitHub via Reclaim
+                    {t.dashboard.audit.verifyGithub}
                   </button>
                 </div>
               ) : (
                 <div className="w-full max-w-md bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center mb-6">
                   <p className="text-green-500 text-sm font-bold flex items-center justify-center gap-2">
                     <CheckCircle2 size={16} />
-                    Compte GitHub authentifié ({verifiedUsername})
+                    {t.dashboard.audit.githubAuthenticated} ({verifiedUsername})
                   </p>
                 </div>
               )}
@@ -625,7 +630,7 @@ export default function SilentDashboard() {
                     type="text"
                     value={auditUsername}
                     onChange={(e) => setAuditUsername(e.target.value)}
-                    placeholder="Username GitHub..."
+                    placeholder={t.dashboard.audit.placeholder}
                     disabled={true}
                     className="w-full bg-black/40 border border-white/5 rounded-xl py-4 pl-12 pr-4 text-white/50 cursor-not-allowed focus:outline-none transition-colors"
                   />
@@ -641,12 +646,12 @@ export default function SilentDashboard() {
                   disabled={isAuditing || !verifiedUsername || isScoreSaved}
                 >
                   {isAuditing ? <Loader2 size={18} className="animate-spin" /> : <Code2 size={18} />}
-                  Analyser
+                  {t.dashboard.audit.analyze}
                 </button>
               </div>
 
               {auditResult && (
-                <div className="w-full max-w-3xl bg-black/20 rounded-2xl p-6 border border-white/10 animate-in fade-in slide-in-from-bottom-4">
+                <div className="w-full max-w-3xl glass-dark rounded-2xl p-6 border border-white/10 animate-in fade-in slide-in-from-bottom-4 shadow-xl">
                   {auditResult.error ? (
                     <div className="text-red-400 p-4 bg-red-500/10 rounded-xl text-center font-medium">
                       {auditResult.error}
@@ -654,7 +659,7 @@ export default function SilentDashboard() {
                   ) : (
                     <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-left w-full">
                       <div className="flex flex-col items-center justify-center min-w-[140px] p-6 bg-white/5 rounded-xl border border-white/10 shrink-0">
-                        <span className="text-[10px] uppercase font-black tracking-widest text-muted mb-2">Quality Score</span>
+                        <span className="text-[10px] uppercase font-black tracking-widest text-muted mb-2">{t.dashboard.audit.qualityScore}</span>
                         <div className="text-5xl font-black text-primary flex items-baseline">
                           {auditResult.score}
                           <span className="text-xl text-muted ml-1">/100</span>
@@ -663,7 +668,7 @@ export default function SilentDashboard() {
                       <div className="flex flex-col justify-center flex-1">
                         <h5 className="font-bold text-lg mb-2 text-white flex items-center gap-2">
                           <CheckCircle2 size={18} className="text-green-500" />
-                          Analyse par AI
+                          {t.dashboard.audit.aiAnalysis}
                         </h5>
                         <p className="text-secondary leading-relaxed text-sm md:text-base">
                           {auditResult.summary}
@@ -672,7 +677,7 @@ export default function SilentDashboard() {
                           <div className="mt-4 pt-4 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm text-muted">
                             <div className="flex items-center gap-2">
                               <Zap size={16} className="text-accent" />
-                              <span className="font-bold text-white">{auditResult.totalStars}</span> Total Stars accumulées
+                              <span className="font-bold text-white">{auditResult.totalStars}</span> {t.dashboard.audit.totalStars}
                             </div>
 
                             {auditResult.signatureData && (
@@ -692,10 +697,10 @@ export default function SilentDashboard() {
                                   <ShieldCheck size={16} />
                                 )}
                                 {isScoreSaved
-                                  ? "Sauvegardé"
+                                  ? t.dashboard.audit.saved
                                   : (isTxPending || txStatus?.status === 'pending')
-                                    ? "Signature..."
-                                    : "Sauvegarder sur la blockchain"}
+                                    ? t.common.signing
+                                    : t.dashboard.audit.save}
                               </button>
                             )}
                           </div>
@@ -755,13 +760,13 @@ export default function SilentDashboard() {
               <div className="flex flex-col items-center mb-12 text-center">
                 <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">Immutable Ledger</h2>
                 <h3 className="text-3xl sm:text-4xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
-                  Historique des attestations.
+                  {t.dashboard.attestations.attestationHistory}
                 </h3>
               </div>
 
               <div className="space-y-4">
                 {!isConnected ? (
-                  <div className="glass-card p-10 text-center opacity-50">Connectez-vous pour voir l&apos;historique.</div>
+                  <div className="glass-card p-10 text-center opacity-50">{t.dashboard.attestations.connectToView}</div>
                 ) : isLoadingAttestations ? (
                   <div className="space-y-4">
                     <BadgeSkeleton />
@@ -770,7 +775,7 @@ export default function SilentDashboard() {
                 ) : attestations.length === 0 ? (
                   <div className="glass-card p-12 text-center border-dashed opacity-60">
                     <Shield size={32} className="mx-auto mb-4 text-muted" />
-                    <p>Aucune attestation on-chain trouvée pour cette adresse.</p>
+                    <p>{t.dashboard.attestations.noAttestation}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4 animate-in fade-in duration-1000">
@@ -829,9 +834,9 @@ export default function SilentDashboard() {
                     <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-8 border-2 border-green-500/30 animate-success-check">
                       <CheckCircle2 size={48} className="text-green-500" />
                     </div>
-                    <h4 className="text-3xl font-black mb-3 tracking-tight text-primary">Ancrage Réussi</h4>
+                    <h4 className="text-3xl font-black mb-3 tracking-tight text-primary">{t.dashboard.proofModal.anchorSuccess}</h4>
                     <p className="text-secondary font-medium opacity-90 max-w-[240px]">
-                      Votre identité {activePlatform} est maintenant immuable.
+                      {t.dashboard.proofModal.immutableDesc} {activePlatform} {t.dashboard.proofModal.isNowImmutable}
                     </p>
                   </div>
                 ) : (
@@ -842,9 +847,9 @@ export default function SilentDashboard() {
 
                     {!zkProof ? (
                       <>
-                        <h4 className="text-2xl font-black mb-4 tracking-tight text-primary">Vérification en cours</h4>
+                        <h4 className="text-2xl font-black mb-4 tracking-tight text-primary">{t.dashboard.proofModal.verifying}</h4>
                         <p className="text-secondary mb-10 text-sm font-medium leading-relaxed opacity-90">
-                          Scannez le QR Code avec votre téléphone pour générer une preuve zkTLS sécurisée.
+                          {t.dashboard.proofModal.scanQr}
                         </p>
                         {proofUrl && (
                           <div className="bg-white p-6 rounded-3xl shadow-xl mb-4 transform hover:scale-[1.02] transition-transform">
@@ -853,7 +858,7 @@ export default function SilentDashboard() {
                         )}
                         <div className="flex items-center gap-2 text-accent-light font-black text-xs uppercase tracking-widest mt-4">
                           <div className="pulse-dot" />
-                          En attente du mobile...
+                          {t.dashboard.proofModal.waitingMobile}
                         </div>
                       </>
                     ) : (
@@ -861,28 +866,28 @@ export default function SilentDashboard() {
                         <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-8 border border-green-500/20">
                           <CheckCircle2 size={40} className="text-green-500" />
                         </div>
-                        <h4 className="text-2xl font-black mb-2 tracking-tight text-primary">Preuve ZK générée !</h4>
+                        <h4 className="text-2xl font-black mb-2 tracking-tight text-primary">{t.dashboard.proofModal.proofGenerated}</h4>
 
                         {platformId && verifiedPlatforms.includes(platformId) ? (
                           <>
                             <p className="text-secondary mb-10 text-sm font-medium">
-                              Identité {activePlatform} vérifiée pour cette session. Vous l&apos;avez déjà ancrée on-chain !
+                              {t.dashboard.proofModal.alreadyAnchored}
                             </p>
                             <button
                               className="btn-stamp w-full py-5 text-lg font-bold shadow-lg shadow-accent/20"
                               onClick={closeProofModal}
                             >
-                              Débloquer l&apos;Audit IA
+                              {t.dashboard.proofModal.unlockAudit}
                             </button>
                           </>
                         ) : (
                           <>
                             <p className="text-secondary mb-10 text-sm font-medium">
-                              Votre identité {activePlatform} est prête à être ancrée on-chain.
+                              {t.dashboard.proofModal.readyToAnchor}
                             </p>
 
                             <div className="w-full p-5 rounded-2xl bg-black/5 border border-black/5 mb-8">
-                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted block mb-1">Score Détecté</span>
+                              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted block mb-1">{t.dashboard.proofModal.detectedScore}</span>
                               <span className="text-4xl font-black text-primary tabular-nums">{reputationScore?.toString()} <span className="text-xs opacity-40 font-bold uppercase tracking-widest ml-1">pts</span></span>
                             </div>
 
@@ -894,9 +899,9 @@ export default function SilentDashboard() {
                               {isTxPending ? (
                                 <div className="flex items-center justify-center gap-3">
                                   <Loader2 className="animate-spin" />
-                                  <span>Ancrage...</span>
+                                  <span>{t.onboarding.anchoring}</span>
                                 </div>
-                              ) : "Ancrer on-chain"}
+                              ) : t.dashboard.proofModal.anchorChain}
                             </button>
                           </>
                         )}
