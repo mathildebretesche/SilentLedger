@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Background3D } from "./Background3D";
+import { AmbientBackground } from "./AmbientBackground";
 
 export function AppBackground() {
     const pathname = usePathname();
@@ -19,15 +20,18 @@ export function AppBackground() {
     const isHomePage = pathname === "/";
 
     return (
-        <div
-            className="fixed inset-0 z-0 pointer-events-none transition-opacity duration-700 ease-in-out"
-            style={{
-                opacity: isHomePage ? 1 : 0,
-                // Keep it mounted but hidden to preserve WebGL context
-                visibility: isHomePage ? "visible" : "hidden",
-            }}
-        >
-            <Background3D scrollY={scrollY} />
-        </div>
+        <>
+            <AmbientBackground scrollY={scrollY} />
+            <div
+                className="fixed inset-0 z-0 pointer-events-none transition-opacity duration-700 ease-in-out"
+                style={{
+                    opacity: isHomePage ? 1 : 0,
+                    // Keep it mounted but hidden to preserve WebGL context
+                    visibility: isHomePage ? "visible" : "hidden",
+                }}
+            >
+                <Background3D scrollY={scrollY} />
+            </div>
+        </>
     );
 }

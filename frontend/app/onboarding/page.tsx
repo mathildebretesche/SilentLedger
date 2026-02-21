@@ -205,46 +205,6 @@ export default function OnboardingPage() {
       className="min-h-screen"
       style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
     >
-      {/* ── 3D Animated Background Object ── */}
-      <div
-        aria-hidden
-        className="fixed inset-0 pointer-events-none transition-[background] duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]"
-        style={{
-          background: activeStep === 1
-            ? "radial-gradient(40vw circle at 30vw 30vh, rgba(124,58,237,0.15) 0%, rgba(32,52,159,0.05) 50%, transparent 100%)"
-            : activeStep === 2
-              ? "radial-gradient(50vw circle at 70vw 50vh, rgba(32,52,159,0.15) 0%, rgba(124,58,237,0.05) 50%, transparent 100%)"
-              : "radial-gradient(60vw circle at 50vw 80vh, rgba(34,197,94,0.1) 0%, rgba(32,52,159,0.05) 50%, transparent 100%)",
-          zIndex: 0,
-        }}
-      />
-
-      {/* ── Dynamic Ambient Core ── */}
-      <div
-        aria-hidden
-        className="fixed inset-0 pointer-events-none transition-[background,opacity] duration-[1500ms] ease-out"
-        style={{
-          background: activeStep === 1
-            ? "radial-gradient(30vw circle at 35vw 35vh, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 80%)"
-            : activeStep === 2
-              ? "radial-gradient(40vw circle at 75vw 55vh, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 80%)"
-              : "radial-gradient(50vw circle at 50vw 85vh, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 80%)",
-          zIndex: 1,
-          opacity: activeStep === 3 ? 0.3 : 0.6,
-        }}
-      />
-
-      {/* Legacy ambient glow (kept for depth) */}
-      <div
-        aria-hidden
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(50vw circle at 50vw 0vh, rgba(32,52,159,0.05) 0%, transparent 100%)",
-          zIndex: 0,
-        }}
-      />
-
       <main
         className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6 min-h-screen flex flex-col justify-center py-8"
         style={{ animation: "fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { keccak256, toBytes, encodeAbiParameters } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 export async function POST(req: Request) {
     try {
-        const { username } = await req.json();
+        const { username, address } = await req.json();
 
         if (!username) {
             return NextResponse.json({ error: "Username is required" }, { status: 400 });
@@ -42,16 +44,16 @@ export async function POST(req: Request) {
         }
 
         // 3. Aggregate metrics
-        const totalStars = reposData.reduce((acc: number, repo: any) => acc + (repo.stargazers_count || 0), 0);
-        const languages = reposData.map((r: any) => r.language).filter(Boolean);
-        const languageCounts = languages.reduce((acc: any, lang: string) => {
+        const totalStars = reposData.reduce((acc: number, repo: { stargazers_count?: number }) => acc + (repo.stargazers_count || 0), 0);
+        const languages = reposData.map((r: { language?: string }) => r.language).filter(Boolean);
+        const languageCounts = (languages as string[]).reduce((acc: Record<string, number>, lang: string) => {
             acc[lang] = (acc[lang] || 0) + 1;
             return acc;
         }, {});
 
         // Get top 5 languages
         const topLanguages = Object.entries(languageCounts)
-            .sort((a: any, b: any) => b[1] - a[1])
+            .sort((a, b) => b[1] - a[1])
             .slice(0, 5)
             .map(([lang]) => lang);
 
@@ -100,18 +102,78 @@ export async function POST(req: Request) {
             } else {
                 parsedResult = JSON.parse(responseText);
             }
-        } catch (err) {
-            console.error("Failed to parse Gemini response:", responseText);
+        } catch (err_parse) {
+            console.error("Failed to parse Gemini response:", responseText, err_parse);
+        }
+
+        // 5. Oracle Signature Strategy (If requested and private key exists)
+        let signatureData = null;
+        const oracleKey = process.env.ORACLE_PRIVATE_KEY as `0x${string}` | undefined;
+
+        if (address && oracleKey && parsedResult.score !== undefined) {
+            try {
+                // Prepare exactly what SilentLedgerAttester uses for submitOracleProof
+                const competenceName = "Open Source Contributor";
+                const proofOfWorkURL = `https://github.com/${userData.login}`;
+                const scoreNum = Math.floor(Math.min(100, Math.max(0, parsedResult.score)));
+                const level = scoreNum > 80 ? 2 : (scoreNum > 50 ? 1 : 0);
+                const deadline = Math.floor(Date.now() / 1000) + 3600; // valid for 1h
+                const studentId = keccak256(toBytes("ai-audit"));
+
+                const encoded = encodeAbiParameters(
+                    [
+                        { type: 'address' },
+                        { type: 'bytes32' },
+                        { type: 'uint8' },
+                        { type: 'uint32' },
+                        { type: 'bytes32' },
+                        { type: 'bytes32' },
+                        { type: 'uint64' }
+                    ],
+                    [
+                        address as `0x${string}`,
+                        keccak256(toBytes(competenceName)),
+                        level,
+                        scoreNum,
+                        keccak256(toBytes(proofOfWorkURL)),
+                        studentId,
+                        BigInt(deadline)
+                    ]
+                );
+
+                const structHash = keccak256(encoded);
+                const account = privateKeyToAccount(oracleKey);
+                // signMessage with {raw: structHash} safely adds \x19Ethereum Signed Message
+                const signature = await account.signMessage({ message: { raw: structHash } });
+
+                signatureData = {
+                    signature,
+                    data: {
+                        recipient: address,
+                        competenceName,
+                        level,
+                        examScore: scoreNum,
+                        proofOfWorkURL,
+                        studentId,
+                        deadline
+                    }
+                };
+            } catch (err_sign) {
+                console.error("Oracle Signing Error:", err_sign);
+                // Soft fail: ignore signing error, just return without signature
+            }
         }
 
         return NextResponse.json({
             score: parsedResult.score,
             summary: parsedResult.summary,
             totalStars,
+            signatureData
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("GitHub Audit Error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

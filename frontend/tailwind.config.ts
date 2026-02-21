@@ -11,6 +11,9 @@ const config: Config = {
       colors: {
         background: "var(--bg-base)",
         foreground: "var(--text-primary)",
+        primary: "var(--accent-light)", // Reverting to blue
+        secondary: "var(--text-secondary)",
+        muted: "var(--text-muted)",
         accent: "var(--accent)",
         "accent-light": "var(--accent-light)",
       },

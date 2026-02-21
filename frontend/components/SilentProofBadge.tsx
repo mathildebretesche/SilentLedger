@@ -1,4 +1,4 @@
-import { GitBranch, ExternalLink, Github, Twitter, Linkedin, Shield } from "lucide-react";
+import { ExternalLink, Github, Twitter, Linkedin, Shield, Brain } from "lucide-react";
 import { EAS_EXPLORER_URL } from "@/lib/contracts";
 import { keccak256, toBytes } from "viem";
 
@@ -20,7 +20,7 @@ export function SilentProofBadge({
     // Mappage des plateformes
     const platformConfig = {
         [keccak256(toBytes("github"))]: {
-            label: "GitHub Contribution",
+            label: "GitHub Profile",
             icon: <Github size={16} color="#000" />,
             bg: "rgba(0,0,0,0.05)",
             border: "1px solid rgba(0,0,0,0.1)",
@@ -42,6 +42,12 @@ export function SilentProofBadge({
             icon: <Shield size={16} color="#855DCD" />, // Using Shield for now as lucide has no farcaster, or I can use an SVG
             bg: "rgba(133,93,205,0.1)",
             border: "1px solid rgba(133,93,205,0.2)",
+        },
+        [keccak256(toBytes("ai-audit"))]: {
+            label: "AI Code Analysis",
+            icon: <Brain size={16} color="#7c3aed" />,
+            bg: "rgba(124,58,237,0.1)",
+            border: "1px solid rgba(124,58,237,0.2)",
         },
     };
 
