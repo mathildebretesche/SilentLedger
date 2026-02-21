@@ -59,6 +59,10 @@ export interface ReclaimCallbackResult {
    * Vaut 1 par défaut si rien n'est trouvé (simple possession du compte).
    */
   reputationScore: bigint;
+  /**
+   * Username extrait de la preuve (utile pour l'UI, ex: AI Audit), non stocké on-chain par défaut.
+   */
+  username?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -207,5 +211,36 @@ export async function handleProofCallback(
   const platformId = await getPlatformId(platform);
   const reputationScore = extractReputationScore(zkProof);
 
-  return { proof: zkProof, platformId, reputationScore };
+  // Log extracted parameters for debugging
+  console.log("[ReclaimService] Extracted Params:", safeExtractedParams);
+
+  // Try to extract username from common params extracted by providers
+  let username = safeExtractedParams["login"] || safeExtractedParams["username"] || safeExtractedParams["username_hash"] || safeExtractedParams["screen_name"];
+
+  // Some templates stringify the entire Github response in one parameter
+  if (!username) {
+    for (const key of Object.keys(safeExtractedParams)) {
+      try {
+        const parsed = JSON.parse(safeExtractedParams[key]);
+        if (parsed.login) username = parsed.login;
+        if (parsed.username) username = parsed.username;
+      } catch (e) { /* ignore parse errors */ }
+    }
+  }
+
+  // Last resort fallback from raw context if present
+  if (!username && claimData["context"]) {
+    try {
+      const contextObj = typeof claimData["context"] === 'string' ? JSON.parse(claimData["context"]) : claimData["context"];
+      const ep = contextObj?.extractedParameters;
+      if (ep) {
+        username = ep["login"] || ep["username"] || ep["username_hash"];
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Debug log
+  console.log("[ReclaimService] Final extracted username:", username);
+
+  return { proof: zkProof, platformId, reputationScore, username };
 }

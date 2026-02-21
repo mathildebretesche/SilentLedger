@@ -30,6 +30,8 @@ import {
   Linkedin,
   Github,
   X,
+  Brain,
+  Code2,
 } from "lucide-react";
 
 import { initPlatformProof, type ZKProof, type SupportedPlatform } from "@/services/ReclaimService";
@@ -78,6 +80,12 @@ export default function SilentDashboard() {
     status: "success" | "error" | "pending";
     message: string;
   } | null>(null);
+
+  // AI Audit State
+  const [auditUsername, setAuditUsername] = useState("");
+  const [verifiedUsername, setVerifiedUsername] = useState<string | null>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<{ score?: number, summary?: string, totalStars?: number, error?: string } | null>(null);
 
   // ── On-chain data ─────────────────────────────────────────────────────────
   const {
@@ -188,6 +196,12 @@ export default function SilentDashboard() {
           setZkProof(result.proof);
           setPlatformId(result.platformId);
           setReputationScore(result.reputationScore);
+
+          if (platform === "github" && result.username) {
+            setVerifiedUsername(result.username);
+            setAuditUsername(result.username);
+          }
+
           setIsGenerating(false);
         },
         onError: (err) => {
@@ -341,6 +355,28 @@ export default function SilentDashboard() {
     }
   }, [address, writeContractAsync, refetchAttestations]);
 
+  /** Étape AI Audit */
+  const handleRunAudit = useCallback(async () => {
+    if (!auditUsername) return;
+    setIsAuditing(true);
+    setAuditResult(null);
+
+    try {
+      const res = await fetch("/api/github-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: auditUsername })
+      });
+
+      const data = await res.json();
+      setAuditResult(data);
+    } catch (err) {
+      setAuditResult({ error: "Failed to fetch audit" });
+    } finally {
+      setIsAuditing(false);
+    }
+  }, [auditUsername]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -459,6 +495,107 @@ export default function SilentDashboard() {
                   <Shield size={20} />
                   Analyser mon profil
                 </button>
+              )}
+            </div>
+          </div>
+
+          {/* AI Code Quality Audit */}
+          <div className="grid grid-cols-1 gap-8 mt-8">
+            <div className="glass-card p-10 sm:p-14 border-white/30 flex flex-col items-center group transition-all duration-500 hover:scale-[1.01]">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 shadow-sm border border-primary/20">
+                <Brain size={32} className="text-primary" />
+              </div>
+              <h4 className="text-3xl font-black mb-2 tracking-tight">AI Code Quality Audit</h4>
+              <p className="text-lg text-secondary mb-8 leading-relaxed opacity-80 text-center max-w-2xl">
+                Évaluez la qualité de code d&apos;un compte GitHub de façon respectueuse de la vie privée. L&apos;IA analyse les métadonnées publiques pour attribuer un score de qualité sans jamais lire le code source privé.
+              </p>
+
+              {!verifiedUsername ? (
+                <div className="w-full max-w-md bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-6 text-center mb-8 flex flex-col items-center gap-4">
+                  <p className="text-yellow-500/90 text-sm font-medium">
+                    Pour garantir l'authenticité de l'audit et préserver votre vie privée, vous devez prouver que vous possédez le compte GitHub à analyser.
+                    Cette vérification est requise à chaque nouvelle session.
+                  </p>
+                  <button
+                    className="btn-stamp w-full flex items-center justify-center gap-2 text-sm font-bold py-3 px-6 hover:bg-accent hover:text-white transition-all border border-accent/20"
+                    onClick={() => handleStampIntelligence("github")}
+                    disabled={isGenerating || isTxPending}
+                  >
+                    {isGenerating && activePlatform === "github" ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                    Vérifier mon GitHub via Reclaim
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full max-w-md bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center mb-6">
+                  <p className="text-green-500 text-sm font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 size={16} />
+                    Compte GitHub authentifié ({verifiedUsername})
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mb-8">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                    <Github size={18} className="text-muted" />
+                  </div>
+                  <input
+                    type="text"
+                    value={auditUsername}
+                    onChange={(e) => setAuditUsername(e.target.value)}
+                    placeholder="Username GitHub..."
+                    disabled={true}
+                    className="w-full bg-black/40 border border-white/5 rounded-xl py-4 pl-12 pr-4 text-white/50 cursor-not-allowed focus:outline-none transition-colors"
+                  />
+                  {verifiedUsername && (
+                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                      <Shield size={16} className="text-green-500" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  className="btn-stamp px-8 py-4 flex items-center justify-center gap-2 font-bold whitespace-nowrap"
+                  onClick={handleRunAudit}
+                  disabled={isAuditing || !verifiedUsername}
+                >
+                  {isAuditing ? <Loader2 size={18} className="animate-spin" /> : <Code2 size={18} />}
+                  Analyser
+                </button>
+              </div>
+
+              {auditResult && (
+                <div className="w-full max-w-3xl bg-black/20 rounded-2xl p-6 border border-white/10 animate-in fade-in slide-in-from-bottom-4">
+                  {auditResult.error ? (
+                    <div className="text-red-400 p-4 bg-red-500/10 rounded-xl text-center font-medium">
+                      {auditResult.error}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-left w-full">
+                      <div className="flex flex-col items-center justify-center min-w-[140px] p-6 bg-white/5 rounded-xl border border-white/10 shrink-0">
+                        <span className="text-[10px] uppercase font-black tracking-widest text-muted mb-2">Quality Score</span>
+                        <div className="text-5xl font-black text-primary flex items-baseline">
+                          {auditResult.score}
+                          <span className="text-xl text-muted ml-1">/100</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col justify-center flex-1">
+                        <h5 className="font-bold text-lg mb-2 text-white flex items-center gap-2">
+                          <CheckCircle2 size={18} className="text-green-500" />
+                          Analyse par AI
+                        </h5>
+                        <p className="text-secondary leading-relaxed text-sm md:text-base">
+                          {auditResult.summary}
+                        </p>
+                        {auditResult.totalStars !== undefined && (
+                          <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2 text-sm text-muted">
+                            <Zap size={16} className="text-accent" />
+                            <span className="font-bold text-white">{auditResult.totalStars}</span> Total Stars accumulées
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
