@@ -27,12 +27,12 @@ export default function PrivacyPage() {
       <Header />
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="px-8 pt-16 pb-24 max-w-5xl mx-auto w-full">
+      <header className="px-4 sm:px-6 md:px-8 pt-12 sm:pt-16 pb-16 sm:pb-24 max-w-5xl mx-auto w-full">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-card border border-white/60 text-[11px] font-bold uppercase tracking-wider text-accent mb-10">
           <ShieldCheck size={12} />
           {t.privacy.badge}
         </div>
-        <h1 className="text-6xl lg:text-[88px] font-black tracking-tighter leading-[0.85] mb-8 text-primary">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[88px] font-black tracking-tighter leading-[0.85] mb-6 sm:mb-8 text-primary">
           {t.privacy.title1}<br />
           <span className="text-transparent" style={{ WebkitTextStroke: "1.5px rgba(15,23,42,0.4)" }}>{t.privacy.title2}</span><br />
           {t.privacy.title3}
@@ -57,12 +57,12 @@ export default function PrivacyPage() {
       </header>
 
       {/* ── Sections ────────────────────────────────────────────────────── */}
-      <main className="px-8 max-w-5xl mx-auto w-full pb-32 space-y-0">
+      <main className="px-4 sm:px-6 md:px-8 max-w-5xl mx-auto w-full pb-20 sm:pb-32 space-y-0">
         {sections.map((s, i) => (
           <section
             key={s.id}
             id={s.id}
-            className="border-t border-white/40 py-16 grid lg:grid-cols-[220px_1fr] gap-12"
+            className="border-t border-white/40 py-8 sm:py-12 md:py-16 grid lg:grid-cols-[220px_1fr] gap-8 sm:gap-12"
           >
             {/* Left — sticky label */}
             <div className="flex flex-col gap-4 lg:pt-1">

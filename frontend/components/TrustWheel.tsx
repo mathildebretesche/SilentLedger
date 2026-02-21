@@ -46,7 +46,7 @@ export function TrustWheel({ value = 0 }: { value: number }) {
     const colors = getColors(normalizedValue);
 
     return (
-        <div className="relative flex items-center justify-center w-[320px] h-[320px] animate-in fade-in zoom-in duration-1000">
+        <div className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[320px] aspect-square animate-in fade-in zoom-in duration-1000">
             {/* Dynamic Background Glow */}
             <div
                 className="absolute inset-[20%] rounded-full opacity-30 blur-[60px] transition-all duration-1000"
@@ -94,7 +94,7 @@ export function TrustWheel({ value = 0 }: { value: number }) {
                 </span>
 
                 <div className="flex items-start mb-2">
-                    <span className="text-[88px] font-black tracking-tighter leading-none text-primary">
+                    <span className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-none text-primary">
                         {Math.round(normalizedValue)}
                     </span>
                     <span className="text-2xl font-black text-accent mt-3 ml-0.5">%</span>

@@ -389,7 +389,7 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Sélecteur de plateforme */}
-                <div className="grid grid-cols-3 gap-4 w-full max-w-sm mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-sm mb-4">
                   {[
                     { id: "github", icon: <Github size={24} />, label: "GitHub" },
                     { id: "x", icon: <Twitter size={24} />, label: "X / Twitter" },

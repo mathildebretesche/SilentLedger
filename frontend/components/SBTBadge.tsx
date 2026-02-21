@@ -20,15 +20,10 @@ export function SBTBadge({ tokenId }: { tokenId: bigint }) {
     if (isLoading) {
         return (
             <div
+                className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl flex items-center justify-center"
                 style={{
-                    width: 120,
-                    height: 120,
-                    borderRadius: 16,
                     background: "rgba(124,58,237,0.05)",
                     border: "1px dashed rgba(124,58,237,0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                 }}
             >
                 <Loader2 size={24} className="animate-spin" color="var(--accent)" />
@@ -49,20 +44,13 @@ export function SBTBadge({ tokenId }: { tokenId: bigint }) {
 
         return (
             <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 12,
-                }}
+                className="flex flex-col items-center gap-3 sm:gap-4"
             >
                 <img
                     src={imageUrl}
                     alt={`SBT #${tokenId}`}
+                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl"
                     style={{
-                        width: 140,
-                        height: 140,
-                        borderRadius: 16,
                         boxShadow: "0 8px 32px rgba(32,52,159,0.15)",
                         border: "1px solid rgba(255,255,255,0.1)",
                         transition: "transform 0.3s ease",
@@ -70,11 +58,11 @@ export function SBTBadge({ tokenId }: { tokenId: bigint }) {
                     onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05) translateY(-4px)")}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1) translateY(0)")}
                 />
-                <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                <div className="text-center">
+                    <div className="text-xs sm:text-sm font-bold text-primary">
                         Badge Sovereign
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                    <div className="text-[10px] sm:text-xs text-muted font-mono">
                         Token ID: {tokenId.toString()}
                     </div>
                 </div>

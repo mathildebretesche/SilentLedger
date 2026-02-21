@@ -58,11 +58,11 @@ export default function ContractsPage() {
     <div className="min-h-screen relative flex flex-col" style={{ color: "var(--text-primary)" }}>
       <Header />
 
-      <main className="flex-1 pt-32 pb-20 px-8">
+      <main className="flex-1 pt-32 pb-20 px-4 sm:px-6 md:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-4xl font-bold text-primary mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary mb-4">
               {t.contracts.title}
             </h1>
             <p className="text-secondary/80 text-lg leading-relaxed max-w-2xl">
@@ -83,7 +83,7 @@ export default function ContractsPage() {
             {contracts.map((contract, index) => (
               <div
                 key={index}
-                className="glass-card p-6 rounded-2xl border border-white/20 hover:border-accent/50 transition-colors"
+                className="glass-card p-4 sm:p-6 rounded-2xl border border-white/20 hover:border-accent/50 transition-colors"
               >
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
                   <div>
