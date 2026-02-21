@@ -24,12 +24,13 @@ export default function EnterPage() {
   const modalOpened = useRef(false);
 
   // Ouvre le modal de connexion dès le montage si non connecté
-  useEffect(() => {
-    if (!isConnected && openConnectModal && !modalOpened.current) {
-      modalOpened.current = true;
-      openConnectModal();
-    }
-  }, [isConnected, openConnectModal]);
+  // Désactivé à la demande de l'utilisateur : la popup ne doit pas s'ouvrir seule.
+  // useEffect(() => {
+  //   if (!isConnected && openConnectModal && !modalOpened.current) {
+  //     modalOpened.current = true;
+  //     openConnectModal();
+  //   }
+  // }, [isConnected, openConnectModal]);
 
   // Lecture des attestations on-chain (une fois connecté)
   const { data: attestationUIDs, isLoading: isLoadingAttestations } =
@@ -45,18 +46,26 @@ export default function EnterPage() {
       },
     });
 
-  // Routing dès que les données sont prêtes
+  // Routing dès que les données sont prêtes ou si non connecté
   useEffect(() => {
-    if (!isConnected || isLoadingAttestations) return;
+    // Si on n'est pas connecté, on redirige vers onboarding (beau design de bienvenue)
+    if (!isConnected) {
+      router.replace("/onboarding");
+      return;
+    }
 
-    const count =
-      (attestationUIDs as `0x${string}`[] | undefined)?.length ?? 0;
+    // On attend que les données on-chain soient chargées
+    if (isLoadingAttestations) return;
 
-    const DEV_BYPASS_ONBOARDING = true; // Si true, on force à aller sur l'onboarding pour test
+    const count = (attestationUIDs as `0x${string}`[] | undefined)?.length ?? 0;
 
-    if (count > 0 && !DEV_BYPASS_ONBOARDING) {
+    // Si on a des attestations -> Dashboard
+    if (count > 0) {
       router.replace("/dashboard");
     } else {
+      // Si 0 attestations, on va sur onboarding, 
+      // SAUF si on vient explicitement du dashboard (cas de déconnexion/reconnexion)
+      // Pour l'instant, restons simple : 0 attestations = onboarding pour prouver un compte.
       router.replace("/onboarding");
     }
   }, [isConnected, isLoadingAttestations, attestationUIDs, router]);

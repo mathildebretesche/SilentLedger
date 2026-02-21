@@ -62,7 +62,7 @@ export function QRCodeDisplay({ url, waiting = true }: QRCodeDisplayProps) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-colors"
+          className="flex-1 flex sm:hidden items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-colors"
           style={{
             background: "var(--accent)",
             color: "white",
@@ -74,7 +74,7 @@ export function QRCodeDisplay({ url, waiting = true }: QRCodeDisplayProps) {
         </a>
         <button
           onClick={handleCopy}
-          className="flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 text-xs font-semibold transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 px-3 text-xs font-semibold transition-colors"
           style={{
             background: copied
               ? "rgba(34,197,94,0.12)"

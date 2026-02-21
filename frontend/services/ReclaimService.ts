@@ -21,7 +21,11 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type SupportedPlatform = "github" | "x" | "linkedin";
+
 export interface ProofRequestOptions {
+  /** Plateforme à vérifier (ex: "github", "x", "linkedin"). */
+  platform: SupportedPlatform;
   /** Adresse du wallet (liée au contexte de la preuve). */
   walletAddress: string;
   /** Callback déclenché quand la preuve ZK est prête. */
@@ -46,7 +50,7 @@ export interface ZKProof {
 export interface ReclaimCallbackResult {
   proof: ZKProof;
   /**
-   * platformId = keccak256("github") — identifie la plateforme GitHub,
+   * platformId = keccak256(platform) — identifie la plateforme,
    * indépendamment du username, pour l'ancrage on-chain.
    */
   platformId: `0x${string}`;
@@ -59,15 +63,18 @@ export interface ReclaimCallbackResult {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GITHUB_PROVIDER_ID =
-  process.env.NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID ?? "";
+const PROVIDER_IDS: Record<SupportedPlatform, string | undefined> = {
+  github: process.env.NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID,
+  x: process.env.NEXT_PUBLIC_RECLAIM_X_PROVIDER_ID,
+  linkedin: process.env.NEXT_PUBLIC_RECLAIM_LINKEDIN_PROVIDER_ID,
+};
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
-/** platformId fixe pour la plateforme GitHub (keccak256("github")). */
-async function getGithubPlatformId(): Promise<`0x${string}`> {
+/** platformId fixe pour la plateforme (keccak256(platformName)). */
+async function getPlatformId(platform: SupportedPlatform): Promise<`0x${string}`> {
   const { keccak256, toBytes } = await import("viem");
-  return keccak256(toBytes("github"));
+  return keccak256(toBytes(platform));
 }
 
 /**
@@ -75,7 +82,7 @@ async function getGithubPlatformId(): Promise<`0x${string}`> {
  * Tente les clés courantes puis retourne 1 (simple possession de compte).
  */
 function extractReputationScore(proof: ZKProof): bigint {
-  const keys = ["contributions", "followers", "public_repos", "score", "count"];
+  const keys = ["contributions", "followers", "public_repos", "score", "count", "connections"];
   for (const key of keys) {
     const val = proof.extractedParams[key];
     if (val) {
@@ -90,19 +97,19 @@ function extractReputationScore(proof: ZKProof): bigint {
 
 /**
  * Initie une session zkTLS Reclaim pour vérifier que l'utilisateur possède
- * un compte GitHub. Aucun username n'est demandé — la preuve est générée
- * depuis la session GitHub active sur l'appareil de l'utilisateur.
+ * un compte sur la plateforme spécifiée.
  *
  * @returns L'URL de la session Reclaim à ouvrir sur le téléphone.
  */
-export async function initGitHubProof(
+export async function initPlatformProof(
   options: ProofRequestOptions
 ): Promise<string> {
-  const { walletAddress, onProofReady, onError } = options;
+  const { platform, walletAddress, onProofReady, onError } = options;
+  const providerId = PROVIDER_IDS[platform];
 
-  if (!GITHUB_PROVIDER_ID) {
+  if (!providerId) {
     throw new Error(
-      "Missing env var: NEXT_PUBLIC_RECLAIM_GITHUB_PROVIDER_ID"
+      `Missing env var for platform: ${platform}`
     );
   }
 
@@ -110,7 +117,7 @@ export async function initGitHubProof(
   const res = await fetch("/api/reclaim/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ providerId: GITHUB_PROVIDER_ID, walletAddress }),
+    body: JSON.stringify({ providerId, walletAddress }),
   });
 
   if (!res.ok) {
@@ -127,7 +134,7 @@ export async function initGitHubProof(
   await proofRequest.startSession({
     onSuccess: async (proofData: unknown) => {
       try {
-        const result = await handleProofCallback(proofData);
+        const result = await handleProofCallback(proofData, platform);
         onProofReady(result);
       } catch (err) {
         if (err instanceof SensitiveDataLeakError) {
@@ -145,36 +152,24 @@ export async function initGitHubProof(
   return await proofRequest.getRequestUrl();
 }
 
-/** @deprecated Utiliser initGitHubProof à la place. */
-export async function initGitHubContributionsProof(
-  options: { githubUsername: string } & Omit<ProofRequestOptions, "walletAddress">
+/** @deprecated Utiliser initPlatformProof à la place. */
+export async function initGitHubProof(
+  options: Omit<ProofRequestOptions, "platform">
 ): Promise<string> {
-  return initGitHubProof({
-    walletAddress: options.githubUsername,
-    onProofReady: options.onProofReady,
-    onError: options.onError,
-  });
+  return initPlatformProof({ ...options, platform: "github" });
 }
 
 /**
  * Traite le payload de preuve retourné par le SDK Reclaim v4.
- *
- * Le SDK v4 passe un `Proof | Proof[]` avec la structure :
- *   proof.claimData     → provider, parameters, context, identifier, timestampS
- *   proof.extractedParameterValues → paramètres extraits (clé/valeur)
- *   proof.signatures, proof.witnesses
- *
- * `transformForOnchain(proof)` produit { claimInfo, signedClaim } attendu
- * par le contrat SilentLedgerAttester.submitProof().
  */
 export async function handleProofCallback(
-  rawProof: unknown
+  rawProof: unknown,
+  platform: SupportedPlatform = "github"
 ): Promise<ReclaimCallbackResult> {
   if (!rawProof) {
     throw new Error("Invalid proof: received empty payload");
   }
 
-  // Le SDK peut envoyer un tableau (multi-claim) ou un objet seul
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proofObj: any = Array.isArray(rawProof) ? rawProof[0] : rawProof;
 
@@ -188,22 +183,19 @@ export async function handleProofCallback(
     throw new Error("Invalid proof structure: missing claimData");
   }
 
-  // Paramètres extraits par le provider (SDK v4 : extractedParameterValues)
   const extractedParameterValues: Record<string, string> =
     proofObj.extractedParameterValues ?? {};
 
-  // Audit de sécurité : détection de fuite de données sensibles
+  // Audit de sécurité
   sanitizeProofContext(proofObj, { throwOnLeak: true });
   const safeExtractedParams = sanitizeExtractedParams(
     extractedParameterValues as Record<string, string>
   );
 
-  // Transformation pour l'on-chain → { claimInfo, signedClaim }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onChainData: any = transformForOnchain(proofObj);
 
   const zkProof: ZKProof = {
-    // raw contient le format { claimInfo, signedClaim } attendu par le contrat
     raw: JSON.stringify(onChainData),
     provider: String(claimData["provider"] ?? "http"),
     extractedParams: safeExtractedParams,
@@ -211,7 +203,7 @@ export async function handleProofCallback(
     identifier: String(proofObj.identifier ?? claimData["identifier"] ?? "0x0"),
   };
 
-  const platformId = await getGithubPlatformId();
+  const platformId = await getPlatformId(platform);
   const reputationScore = extractReputationScore(zkProof);
 
   return { proof: zkProof, platformId, reputationScore };

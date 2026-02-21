@@ -15,22 +15,31 @@
  *   6. Chaque attestation s'affiche comme un "Silent Proof Badge".
  */
 
-import { useState, useCallback } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount, useReadContract, useWriteContract, useReadContracts } from "wagmi";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import {
   Shield,
   Loader2,
   CheckCircle2,
   Zap,
+  Fingerprint,
+  Twitter,
+  Linkedin,
+  Github,
+  X,
 } from "lucide-react";
 
-import { initGitHubProof, type ZKProof } from "@/services/ReclaimService";
+import { initPlatformProof, type ZKProof, type SupportedPlatform } from "@/services/ReclaimService";
 import {
   SILENT_LEDGER_ATTESTER_ABI,
   ATTESTER_ADDRESS,
   CERTIFICATION_SBT_ABI,
   SBT_ADDRESS,
+  EAS_ADDRESS,
+  EAS_ABI,
 } from "@/lib/contracts";
 
 import { SilentProofBadge } from "@/components/SilentProofBadge";
@@ -40,18 +49,31 @@ import { TxStatus } from "@/components/TxStatus";
 import { StatRow } from "@/components/StatRow";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { Wallet } from "lucide-react";
-import { keccak256, toBytes } from "viem";
+import { keccak256, toBytes, decodeAbiParameters } from "viem";
+import { TrustWheel } from "@/components/TrustWheel";
 
 export default function SilentDashboard() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
+  const router = useRouter();
+
+  // Redirection si déconnecté
+  useEffect(() => {
+    if (!isConnected) {
+      router.push("/");
+    }
+  }, [isConnected, router]);
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [zkProof, setZkProof] = useState<ZKProof | null>(null);
+  const [activePlatform, setActivePlatform] = useState<SupportedPlatform>("github");
   const [platformId, setPlatformId] = useState<`0x${string}` | null>(null);
   const [reputationScore, setReputationScore] = useState<bigint | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [txStatus, setTxStatus] = useState<{
     status: "success" | "error" | "pending";
     message: string;
@@ -76,6 +98,33 @@ export default function SilentDashboard() {
 
   const attestations = (attestationUIDs as `0x${string}`[] | undefined) ?? [];
 
+  // Lecture des détails des attestations via EAS Contract
+  const {
+    data: attestationDetails,
+    isLoading: isLoadingDetails,
+  } = useReadContracts({
+    contracts: attestations.map((uid) => ({
+      address: EAS_ADDRESS as `0x${string}`,
+      abi: EAS_ABI,
+      functionName: "getAttestation",
+      args: [uid],
+    })),
+  });
+
+  const verifiedPlatforms = (attestationDetails || []).map((res: any) => {
+    if (!res.result || !res.result.data) return null;
+    try {
+      // Decode data: bytes32 platformId, uint256 reputationScore, bool isVerified
+      const [platformId] = decodeAbiParameters(
+        [{ type: "bytes32" }, { type: "uint256" }, { type: "bool" }],
+        res.result.data
+      );
+      return platformId;
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
   // Lecture des SBT On-chain
   const {
     data: sbtIdsData,
@@ -94,18 +143,46 @@ export default function SilentDashboard() {
 
   const sbtIds = (sbtIdsData as bigint[] | undefined) ?? [];
 
+  // ── Logic ────────────────────────────────────────────────────────────────
+
+  // Calcul du Trust Score
+  const trustScore = (() => {
+    let score = 0;
+
+    // Plateformes supportées
+    const hashes = {
+      github: keccak256(toBytes("github")),
+      x: keccak256(toBytes("x")),
+      linkedin: keccak256(toBytes("linkedin")),
+    };
+
+    // 1. Social Verifications (Basé sur les platformId réellement présents)
+    if (verifiedPlatforms.includes(hashes.github)) score += 40;
+    if (verifiedPlatforms.includes(hashes.x)) score += 20;
+    if (verifiedPlatforms.includes(hashes.linkedin)) score += 20;
+
+    // 2. Oracle / SBTs -> +10% par SBT (max 20%)
+    score += Math.min(sbtIds.length * 10, 20);
+
+    return Math.min(score, 100);
+  })();
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  /** Étape 1 : Lance le flux zkTLS Reclaim. */
-  const handleStampIntelligence = useCallback(async () => {
+  /** Étape 1 : Lance le flux zkTLS Reclaim pour une plateforme donnée. */
+  const handleStampIntelligence = useCallback(async (platform: SupportedPlatform = "github") => {
     if (!address) return;
+    setActivePlatform(platform);
     setIsGenerating(true);
+    setIsSuccess(false);
+    setIsClosing(false);
     setProofUrl(null);
     setZkProof(null);
     setTxStatus(null);
 
     try {
-      const url = await initGitHubProof({
+      const url = await initPlatformProof({
+        platform,
         walletAddress: address,
         onProofReady: async (result) => {
           setZkProof(result.proof);
@@ -116,9 +193,11 @@ export default function SilentDashboard() {
         onError: (err) => {
           setIsGenerating(false);
           setTxStatus({ status: "error", message: err.message });
+          setShowProofModal(false);
         },
       });
       setProofUrl(url);
+      setShowProofModal(true);
     } catch (err) {
       setIsGenerating(false);
       setTxStatus({
@@ -127,6 +206,17 @@ export default function SilentDashboard() {
       });
     }
   }, [address]);
+
+  /** Fermeture animée du modal */
+  const closeProofModal = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setShowProofModal(false);
+      setIsClosing(false);
+      setIsSuccess(false);
+      setIsGenerating(false);
+    }, 300); // Correspond à la durée de l'animation modalScaleOut
+  }, []);
 
   /** Étape 2 : Soumet la preuve ZK on-chain via SilentLedgerAttester.submitProof(). */
   const handleSubmitOnChain = useCallback(async () => {
@@ -147,16 +237,22 @@ export default function SilentDashboard() {
         status: "success",
         message: `Attestation créée ! UID: ${uid?.slice(0, 12)}…`,
       });
+      setIsSuccess(true);
       setZkProof(null);
       setProofUrl(null);
-      await refetchAttestations();
+
+      // Attendre la fin de l'animation de succès avant de fermer
+      setTimeout(() => {
+        closeProofModal();
+        refetchAttestations();
+      }, 2000);
     } catch (err) {
       setTxStatus({
         status: "error",
         message: err instanceof Error ? err.message : "Transaction échouée",
       });
     }
-  }, [zkProof, platformId, reputationScore, writeContractAsync, refetchAttestations]);
+  }, [zkProof, platformId, reputationScore, writeContractAsync, refetchAttestations, closeProofModal]);
 
   /** Étape Oracle : Vérification historique via Oracle (Mock). */
   const handleOracleVerification = useCallback(async () => {
@@ -248,434 +344,309 @@ export default function SilentDashboard() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-        padding: "0 24px 64px",
-      }}
-    >
-      {/* ── Ambient background glow ─────────────────────────────────────── */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          top: "-30%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 600,
-          height: 600,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      <Header maxWidthClass="max-w-[900px]" />
-
-      {/* ── Main content ────────────────────────────────────────────────── */}
-      <main
-        style={{
-          maxWidth: 900,
-          margin: "64px auto 0",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 20,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {/* ── Hero card ───────────────────────────────────────────────── */}
+    <div className="min-h-screen relative flex flex-col" style={{ background: "var(--bg-base)" }}>
+      {/* ── Fixed Atmospheric Backgrounds ── */}
+      <div className="fixed inset-0 pointer-events-none z-0">
         <div
-          className="glass-card"
-          style={{ gridColumn: "1 / -1", padding: "40px 40px 36px" }}
-        >
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: "rgba(124,58,237,0.15)",
-                border: "1px solid rgba(124,58,237,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Zap size={22} color="#a78bfa" />
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  letterSpacing: "-0.03em",
-                  color: "var(--text-primary)",
-                  margin: 0,
-                }}
-              >
-                Proof of Intelligence
-              </h1>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: "var(--text-secondary)",
-                  marginTop: 6,
-                  maxWidth: 480,
-                  lineHeight: 1.6,
-                }}
-              >
-                Transformez vos contributions Web2 en attestations on-chain
-                anonymes via zkTLS. Pas de richesse, seulement du talent.
-              </p>
+          className="absolute inset-0 opacity-30 transition-opacity duration-1000"
+          style={{
+            background: "radial-gradient(circle at 50% -10%, var(--accent) 0%, transparent 70%), radial-gradient(circle at 50% 110%, var(--accent) 0%, transparent 70%)"
+          }}
+        />
+      </div>
+
+      <Header maxWidthClass="max-w-6xl" />
+
+      <main className="relative z-10 w-full flex flex-col gap-24 sm:gap-40 pb-32">
+
+        {/* ── SECTION 1: IDENTITY & OVERVIEW ────────────────────────────── */}
+        <section className="max-w-6xl mx-auto w-full px-6 pt-12 md:pt-24 flex flex-col items-center text-center">
+          <TrustWheel value={trustScore} />
+
+          <p className="text-lg sm:text-xl font-medium tracking-tight text-secondary max-w-2xl mb-16 mt-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+            Votre réputation est maintenant ancrée <br className="hidden sm:block" /> et
+            <span className="text-primary font-bold italic ml-2">totalement anonyme.</span>
+          </p>
+
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full animate-in fade-in duration-1000 delay-500">
+            {[
+              { label: "Silent Proofs", value: attestations.length.toString(), icon: Shield },
+              { label: "Credentials", value: sbtIds.length.toString(), icon: Zap },
+              { label: "Status", value: "Verified", icon: CheckCircle2 },
+              { label: "Network", value: "Sepolia", icon: Wallet }
+            ].map((stat, i) => (
+              <div key={i} className="glass-card p-6 flex flex-col items-center gap-2 border-white/20">
+                <stat.icon size={16} className="text-accent opacity-60" />
+                <span className="text-2xl font-black tabular-nums">{stat.value}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted">{stat.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── SECTION 2: REPUTATION ENGINE ─────────────────────────────── */}
+        <section className="max-w-5xl mx-auto w-full px-6">
+          <div className="flex flex-col items-center mb-16 text-center">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">Reputation Engine</h2>
+            <h3 className="text-4xl sm:text-5xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Boostez votre légitimité.
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            {[
+              { id: "github", label: "GitHub", icon: <Github size={32} />, color: "bg-white/40", text: "Vérifiez vos contributions anonymement.", hash: keccak256(toBytes("github")) },
+              { id: "x", label: "X / Twitter", icon: <Twitter size={32} />, color: "bg-blue-500/10", text: "Prouvez votre influence sociale.", hash: keccak256(toBytes("x")) },
+              { id: "linkedin", label: "LinkedIn", icon: <Linkedin size={32} />, color: "bg-blue-700/10", text: "Certifiez votre carrière pro.", hash: keccak256(toBytes("linkedin")) },
+            ].map((p) => {
+              const isPlatformVerified = verifiedPlatforms.includes(p.hash);
+
+              return (
+                <div key={p.id} className="glass-card p-8 border-white/30 flex flex-col justify-between group transition-all duration-500 hover:scale-[1.01]">
+                  <div>
+                    <div className={`w-14 h-14 rounded-2xl ${p.color} flex items-center justify-center mb-6 shadow-sm`}>
+                      <div className="text-primary">{p.icon}</div>
+                    </div>
+                    <h4 className="text-2xl font-black mb-2 tracking-tight">{p.label}</h4>
+                    <p className="text-sm text-secondary mb-8 leading-relaxed opacity-80">
+                      {p.text}
+                    </p>
+                  </div>
+
+                  {isConnected && (
+                    isPlatformVerified ? (
+                      <div className="flex items-center gap-2 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500">
+                        <CheckCircle2 size={18} />
+                        <span className="font-bold text-sm">Vérifié</span>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn-stamp w-full flex items-center justify-center gap-2 text-sm font-bold py-4 hover:bg-accent hover:text-white transition-all"
+                        onClick={() => handleStampIntelligence(p.id as SupportedPlatform)}
+                        disabled={isGenerating || isTxPending}
+                      >
+                        {isGenerating && activePlatform === p.id ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                        Prouver account
+                      </button>
+                    )
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 gap-8">
+            {/* Oracle Card (Full Width potentially or kept in grid) */}
+            <div className="glass-card p-10 sm:p-14 border-white/30 flex flex-col md:flex-row items-center justify-between group transition-all duration-500 hover:scale-[1.01] gap-8">
+              <div className="max-w-xl text-center md:text-left">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-8 shadow-sm border border-emerald-500/20 mx-auto md:mx-0">
+                  <Wallet size={32} className="text-emerald-500" />
+                </div>
+                <h4 className="text-3xl font-black mb-4 tracking-tight">On-Chain Oracle Analysis</h4>
+                <p className="text-lg text-secondary mb-0 leading-relaxed opacity-80">
+                  Analysez votre historique DeFi et DAO pour obtenir un score de puissance on-chain certifié.
+                </p>
+              </div>
+
+              {isConnected && (
+                <button
+                  className="btn-stamp px-12 py-6 flex items-center justify-center gap-3 text-lg font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all border-emerald-500/20 whitespace-nowrap"
+                  onClick={handleOracleVerification}
+                  disabled={isTxPending}
+                >
+                  <Shield size={20} />
+                  Analyser mon profil
+                </button>
+              )}
             </div>
           </div>
 
-          {/* ── Stamp form ─────────────────────────────────────────────── */}
-          <div style={{ marginTop: 32 }}>
-            {!isConnected ? (
+          {/* Reclaim / Status Area */}
+          <div className="mt-12 max-w-lg mx-auto">
+            {txStatus && <div className="mt-8"><TxStatus status={txStatus.status} message={txStatus.message} /></div>}
+          </div>
+
+          {/* ── MODAL DE PREUVE ── */}
+          {showProofModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-0">
+              {/* Backdrop */}
               <div
-                style={{
-                  padding: "16px 20px",
-                  background: "rgba(124,58,237,0.06)",
-                  border: "1px dashed rgba(124,58,237,0.3)",
-                  borderRadius: 10,
-                  textAlign: "center",
-                  color: "var(--text-secondary)",
-                  fontSize: 14,
-                }}
-              >
-                Connectez votre wallet pour commencer
+                className={`absolute inset-0 bg-black/60 backdrop-blur-xl ${isClosing ? 'modal-overlay-exit' : 'modal-overlay-enter'}`}
+                onClick={() => !isTxPending && closeProofModal()}
+              />
+
+              {/* Modal Content */}
+              <div className={`relative glass-card max-w-md w-full p-8 sm:p-12 border-white/20 shadow-2xl ${isClosing ? 'modal-content-exit' : 'modal-content-enter'}`}>
+                <button
+                  onClick={closeProofModal}
+                  className="absolute top-6 right-6 text-secondary hover:text-primary transition-colors p-2 rounded-full hover:bg-white/10"
+                  disabled={isTxPending || isSuccess}
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="flex flex-col items-center text-center">
+                  {isSuccess ? (
+                    <div className="flex flex-col items-center py-6">
+                      <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-8 border-2 border-green-500/30 animate-success-check">
+                        <CheckCircle2 size={48} className="text-green-500" />
+                      </div>
+                      <h4 className="text-3xl font-black mb-3 tracking-tight text-primary">Ancrage Réussi</h4>
+                      <p className="text-secondary font-medium opacity-90 max-w-[240px]">
+                        Votre identité {activePlatform} est maintenant immuable.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-8 animate-in zoom-in duration-500">
+                        <Shield size={32} className="text-accent" />
+                      </div>
+
+                      {!zkProof ? (
+                        <>
+                          <h4 className="text-2xl font-black mb-4 tracking-tight text-primary">Vérification en cours</h4>
+                          <p className="text-secondary mb-10 text-sm font-medium leading-relaxed opacity-90">
+                            Scannez le QR Code avec votre téléphone pour générer une preuve zkTLS sécurisée.
+                          </p>
+                          {proofUrl && (
+                            <div className="bg-white p-6 rounded-3xl shadow-xl mb-4 transform hover:scale-[1.02] transition-transform">
+                              <QRCodeDisplay url={proofUrl} waiting />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-accent-light font-black text-xs uppercase tracking-widest mt-4">
+                            <div className="pulse-dot" />
+                            En attente du mobile...
+                          </div>
+                        </>
+                      ) : (
+                        <div className="animate-in zoom-in duration-500 flex flex-col items-center w-full">
+                          <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-8 border border-green-500/20">
+                            <CheckCircle2 size={40} className="text-green-500" />
+                          </div>
+                          <h4 className="text-2xl font-black mb-2 tracking-tight text-primary">Preuve ZK générée !</h4>
+                          <p className="text-secondary mb-10 text-sm font-medium">
+                            Votre identité {activePlatform} est prête à être ancrée on-chain.
+                          </p>
+
+                          <div className="w-full p-5 rounded-2xl bg-black/5 border border-black/5 mb-8">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted block mb-1">Score Détecté</span>
+                            <span className="text-4xl font-black text-primary tabular-nums">{reputationScore?.toString()} <span className="text-xs opacity-40 font-bold uppercase tracking-widest ml-1">pts</span></span>
+                          </div>
+
+                          <button
+                            className="btn-stamp w-full py-5 text-lg font-bold shadow-lg shadow-accent/20"
+                            onClick={handleSubmitOnChain}
+                            disabled={isTxPending}
+                          >
+                            {isTxPending ? (
+                              <div className="flex items-center justify-center gap-3">
+                                <Loader2 className="animate-spin" />
+                                <span>Ancrage...</span>
+                              </div>
+                            ) : "Ancrer on-chain"}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── SECTION 3: SOULBOUND GALLERY (Commented Out) ───────────────────
+        <section className="max-w-6xl mx-auto w-full px-6">
+          <div className="flex flex-col items-center mb-16 text-center">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">Soulbound Gallery</h2>
+            <h3 className="text-4xl sm:text-5xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Vos réussites immuables.
+            </h3>
+          </div>
+
+          <div className="glass-card p-12 sm:p-20 min-h-[300px] flex items-center justify-center">
+            {!isConnected ? (
+              <p className="text-secondary font-medium italic">Connectez votre wallet pour explorer vos badges.</p>
+            ) : isLoadingSbts ? (
+              <div className="flex gap-8 flex-wrap justify-center">
+                <div className="w-32 h-32 rounded-3xl bg-white/5 animate-pulse" />
+                <div className="w-32 h-32 rounded-3xl bg-white/5 animate-pulse" />
+                <div className="w-32 h-32 rounded-3xl bg-white/5 animate-pulse" />
+              </div>
+            ) : sbtIds.length === 0 ? (
+              <div className="text-center">
+                <p className="text-xl text-secondary mb-4 opacity-60">Aucun badge pour le moment.</p>
+                <p className="text-sm text-muted">Réalisez une vérification ci-dessus pour obtenir votre premier SBT.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {/* Vérification GitHub – un seul bouton, pas d'input username */}
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    className="btn-stamp"
-                    onClick={handleStampIntelligence}
-                    disabled={isGenerating || isTxPending}
-                    style={{ whiteSpace: "nowrap" }}
-                    id="stamp-intelligence-btn"
-                  >
-                    {isGenerating ? (
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Loader2 size={14} className="animate-spin" />
-                        Génération…
-                      </span>
-                    ) : (
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Shield size={14} />
-                        Vérifier mon compte GitHub
-                      </span>
-                    )}
-                  </button>
-                </div>
-
-                {/* Reclaim QR / Link */}
-                {proofUrl && !zkProof && (
-                  <QRCodeDisplay url={proofUrl} waiting />
-                )}
-
-                {/* Proof ready → submit on-chain */}
-                {zkProof && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "14px 16px",
-                      background: "rgba(34,197,94,0.06)",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      borderRadius: 10,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <CheckCircle2 size={16} color="var(--green)" />
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                          Preuve ZK générée avec succès
-                        </p>
-                        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                          Score: {reputationScore?.toString() ?? "—"} contributions
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      className="btn-stamp"
-                      onClick={handleSubmitOnChain}
-                      disabled={isTxPending}
-                      style={{ fontSize: 13, padding: "10px 18px" }}
-                    >
-                      {isTxPending ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        "Ancrer on-chain →"
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── Oracle Section ────────────────────────────────────────── */}
-                <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1px solid var(--border)" }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Wallet size={18} />
-                    Verify Wallet History
-                  </h3>
-                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-                    Analyze your on-chain footprint (DeFi, DAO, NFT) to generate a &quot;DeFi Power User&quot; badge via our Oracle.
-                  </p>
-                  <button
-                    className="btn-stamp"
-                    onClick={handleOracleVerification}
-                    disabled={isTxPending}
-                    style={{
-                      background: "linear-gradient(135deg, #10b981, #059669)", // Greenish for Oracle
-                      fontSize: 13,
-                      padding: "10px 18px"
-                    }}
-                  >
-                    Verify with Oracle →
-                  </button>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, fontStyle: "italic" }}>
-                    (Requires Backend Signature - will revert in demo if not configured)
-                  </p>
-                </div>
-
-
-                {/* Tx status */}
-                {txStatus && (
-                  <TxStatus status={txStatus.status} message={txStatus.message} />
-                )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-12 sm:gap-16 justify-items-center">
+                {sbtIds.map((id) => (
+                  <SBTBadge key={id.toString()} tokenId={id} />
+                ))}
               </div>
             )}
           </div>
-        </div>
+        </section>
+        ────────────────────────────────────────────────────────────── */}
 
-        {/* ── Stats card ──────────────────────────────────────────────── */}
-        <div className="glass-card" style={{ padding: "28px 28px 24px" }}>
-          <h2
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "var(--text-muted)",
-              marginBottom: 20,
-            }}
-          >
-            Statistiques
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <StatRow label="Silent Proofs" value={attestations.length.toString()} accent />
-            <StatRow label="Plateforme" value={isConnected ? "Sepolia Testnet" : "—"} />
-            <StatRow label="Protocole ZK" value="Reclaim zkTLS" />
-            <StatRow label="Ancrage" value="EAS v1.3.0" />
-          </div>
-        </div>
-
-        {/* ── How it works card ───────────────────────────────────────── */}
-        <div className="glass-card" style={{ padding: "28px 28px 24px" }}>
-          <h2
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "var(--text-muted)",
-              marginBottom: 20,
-            }}
-          >
-            Comment ça marche
-          </h2>
-          <ol style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
-            {[
-              ["1", "Entrez votre username GitHub"],
-              ["2", "Scan du QR Reclaim (zkTLS)"],
-              ["3", "Preuve vérifiée on-chain (EAS)"],
-              ["4", "Badge souverain et anonyme"],
-            ].map(([step, text]) => (
-              <li key={step} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: "rgba(124,58,237,0.15)",
-                    border: "1px solid rgba(124,58,237,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--accent-light)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {step}
-                </span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{text}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* ── Silent Proofs list ──────────────────────────────────────── */}
-        <div
-          className="glass-card"
-          style={{ gridColumn: "1 / -1", padding: "28px 28px 24px" }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-muted)",
-              }}
-            >
-              Silent Proofs{" "}
-              {attestations.length > 0 && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    background: "rgba(124,58,237,0.2)",
-                    color: "var(--accent-light)",
-                    padding: "2px 7px",
-                    borderRadius: 4,
-                    marginLeft: 6,
-                    fontWeight: 700,
-                  }}
-                >
-                  {attestations.length}
-                </span>
-              )}
-            </h2>
+        {/* ── SECTION 4: IMMUTABLE LEDGER ──────────────────────────────── */}
+        <section className="max-w-4xl mx-auto w-full px-6">
+          <div className="flex flex-col items-center mb-16 text-center">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted mb-4">Immutable Ledger</h2>
+            <h3 className="text-3xl sm:text-4xl font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Historique des attestations.
+            </h3>
           </div>
 
-          {/* Content */}
-          {!isConnected ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--text-muted)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Connectez votre wallet pour voir vos attestations.
-            </p>
-          ) : isLoadingAttestations ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <BadgeSkeleton />
-              <BadgeSkeleton />
-            </div>
-          ) : attestations.length === 0 ? (
-            <div
-              style={{
-                padding: "32px",
-                textAlign: "center",
-                border: "1px dashed var(--border)",
-                borderRadius: 10,
-              }}
-            >
-              <Shield
-                size={28}
-                color="var(--text-muted)"
-                style={{ margin: "0 auto 12px" }}
-              />
-              <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>
-                Aucune attestation pour l&apos;instant.
-                <br />
-                <span style={{ color: "var(--text-secondary)" }}>
-                  Stampez votre première contribution GitHub ci-dessus.
-                </span>
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {attestations.map((uid, i) => (
-                <SilentProofBadge key={uid} attestation={{ uid }} index={i} />
-              ))}
-            </div>
-          )}
-        </div>
+          <div className="space-y-4">
+            {!isConnected ? (
+              <div className="glass-card p-10 text-center opacity-50">Connectez-vous pour voir l&apos;historique.</div>
+            ) : isLoadingAttestations ? (
+              <div className="space-y-4">
+                <BadgeSkeleton />
+                <BadgeSkeleton />
+              </div>
+            ) : attestations.length === 0 ? (
+              <div className="glass-card p-12 text-center border-dashed opacity-60">
+                <Shield size={32} className="mx-auto mb-4 text-muted" />
+                <p>Aucune attestation on-chain trouvée pour cette adresse.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 animate-in fade-in duration-1000">
+                {attestations.map((uid, i) => {
+                  // Trouver le platformId pour cette attestation spécifique
+                  const detail = (attestationDetails || []).find((d: any) => d.result?.uid === uid);
+                  let platformId: string | undefined = undefined;
 
-        {/* ── My Credentials (SBTs) ─────────────────────────────────── */}
-        <div
-          className="glass-card"
-          style={{ gridColumn: "1 / -1", padding: "28px 28px 24px", marginTop: "24px" }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "var(--text-muted)",
-              }}
-            >
-              My Soulbound Credentials
-            </h2>
+                  if (detail?.result?.data) {
+                    try {
+                      const [pid] = decodeAbiParameters(
+                        [{ type: "bytes32" }, { type: "uint256" }, { type: "bool" }],
+                        detail.result.data
+                      );
+                      platformId = pid;
+                    } catch (e) {
+                      console.error("Failed to decode platformId for", uid, e);
+                    }
+                  }
+
+                  return (
+                    <SilentProofBadge
+                      key={uid}
+                      attestation={{ uid: uid as `0x${string}` }}
+                      platformId={platformId}
+                      index={i}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
+        </section>
 
-          {!isConnected ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--text-muted)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Connectez votre wallet pour voir vos badges SBT.
-            </p>
-          ) : isLoadingSbts ? (
-            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
-              {/* Skeleton for SBT */}
-              <div style={{ width: 140, height: 140, borderRadius: 16, background: "rgba(255,255,255,0.05)" }} className="animate-pulse" />
-              <div style={{ width: 140, height: 140, borderRadius: 16, background: "rgba(255,255,255,0.05)" }} className="animate-pulse" />
-            </div>
-          ) : sbtIds.length === 0 ? (
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--text-muted)",
-                textAlign: "center",
-                padding: "24px 0",
-              }}
-            >
-              Aucun badge Soulbound pour l'instant.
-            </p>
-          ) : (
-            <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", justifyContent: "flex-start", padding: "10px 0" }}>
-              {sbtIds.map((id) => (
-                <SBTBadge key={id.toString()} tokenId={id} />
-              ))}
-            </div>
-          )}
-        </div>
       </main>
+      <Footer />
     </div>
   );
 }

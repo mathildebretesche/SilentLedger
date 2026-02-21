@@ -104,6 +104,37 @@ export const ATTESTER_ADDRESS =
   (process.env.NEXT_PUBLIC_ATTESTER_ADDRESS as `0x${string}`) ??
   "0x0000000000000000000000000000000000000000";
 
+/** EAS Contract on Sepolia */
+export const EAS_ADDRESS = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e";
+
+/** EAS getAttestation(uid) ABI */
+export const EAS_ABI = [
+  {
+    name: "getAttestation",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "uid", type: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "uid", type: "bytes32" },
+          { name: "schema", type: "bytes32" },
+          { name: "time", type: "uint64" },
+          { name: "expirationTime", type: "uint64" },
+          { name: "revocationTime", type: "uint64" },
+          { name: "refUID", type: "bytes32" },
+          { name: "recipient", type: "address" },
+          { name: "attester", type: "address" },
+          { name: "revocable", type: "bool" },
+          { name: "data", type: "bytes" }
+        ]
+      }
+    ]
+  }
+] as const;
+
 /** URL de l'explorateur EAS pour inspecter les attestations. */
 export const EAS_EXPLORER_URL = "https://sepolia.easscan.org/attestation/view";
 
