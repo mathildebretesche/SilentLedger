@@ -203,7 +203,7 @@ export const fr = {
     },
     overview: {
       subtitle: "Votre réputation est maintenant ancrée",
-      subtitleBold: "totalement anonyme.",
+      subtitleBold: "et totalement anonyme.",
       stats: {
         silentProofs: "Silent Proofs",
         credentials: "Certifications",

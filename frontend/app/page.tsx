@@ -64,7 +64,7 @@ export default function HomePage() {
         className={`relative z-10 flex-1 flex flex-col lg:flex-row items-center justify-center px-8 max-w-7xl mx-auto w-full gap-16 lg:gap-24 py-20 lg:py-32 transition-all duration-1000 ${isVisible["hero"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
       >
         <div className="flex-1 text-center lg:text-left" style={{ transform: `translateY(${scrollY * -0.05}px)` }}>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-[11px] font-bold uppercase tracking-wider text-accent mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card glass-noise text-[11px] font-bold uppercase tracking-wider text-accent mb-8 animate-float">
             {t.home.badge}
           </div>
 
@@ -93,22 +93,37 @@ export default function HomePage() {
           className="flex-1 relative hidden lg:block"
           style={{ transform: `rotate(${scrollY * 0.01}deg) translateY(${scrollY * 0.03}px)` }}
         >
-          <div className="glass-card relative z-10 p-10 w-[440px] aspect-[4/5] flex flex-col shadow-2xl transition-transform duration-500 hover:scale-[1.02]">
-            <div className="flex items-center justify-between mb-12">
-              <Shield size={24} className="text-accent" />
-              <div className="px-3 py-1 rounded-full bg-white/40 border border-white/60 text-secondary text-[10px] font-black">ENCRYPTED_LEDGER</div>
+          <div className="glass-card glass-card-hero glass-noise relative z-10 p-10 w-[440px] aspect-[4/5] flex flex-col transition-all duration-500 hover:scale-[1.02] overflow-hidden ambient-glow">
+            {/* Multi-layered ambient glow */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[200px] bg-gradient-radial from-blue-500/15 via-transparent to-transparent blur-[60px]" />
+              <div className="absolute bottom-0 left-0 w-[250px] h-[150px] bg-gradient-radial from-accent/10 via-transparent to-transparent blur-[50px]" />
             </div>
-            <div className="space-y-6">
-              <div className="h-4 w-2/3 bg-black/5 rounded-full" />
-              <div className="h-4 w-1/3 bg-black/5 rounded-full" />
+
+            {/* Subtle gradient overlay for depth */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-transparent pointer-events-none" />
+
+            {/* Edge light simulation */}
+            <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(255,255,255,0.05)] pointer-events-none" />
+
+            {/* Inner glow that appears on hover */}
+            <div className="inner-glow absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-0 group-hover:opacity-100" />
+
+            <div className="relative z-10 flex items-center justify-between mb-12">
+              <Shield size={24} className="text-accent drop-shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+              <div className="px-3 py-1 rounded-full bg-white/40 backdrop-blur-sm border border-white/60 text-secondary text-[10px] font-black shadow-sm backdrop-brightness-110">ENCRYPTED_LEDGER</div>
+            </div>
+            <div className="relative z-10 space-y-6">
+              <div className="h-4 w-2/3 bg-gradient-to-r from-black/8 via-black/4 to-transparent rounded-full" />
+              <div className="h-4 w-1/3 bg-gradient-to-r from-black/8 via-black/4 to-transparent rounded-full" />
               <div className="pt-8 space-y-4">
-                <div className="h-16 w-full glass-card rounded-2xl flex items-center px-4 gap-4">
-                  <Zap size={20} className="text-accent" />
-                  <div className="h-2 w-1/2 bg-black/10 rounded-full" />
+                <div className="h-16 glass-card glass-card-stat glass-noise rounded-2xl flex items-center px-4 gap-4 shadow-[inset_0_2px_10px_rgba(255,255,255,0.12),0_4px_12px_rgba(0,0,0,0.04)] hover:shadow-[inset_0_2px_10px_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.06)] transition-shadow duration-300">
+                  <Zap size={20} className="text-accent drop-shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+                  <div className="h-2 w-1/2 bg-gradient-to-r from-black/12 via-black/6 to-transparent rounded-full" />
                 </div>
-                <div className="h-16 w-full glass-card rounded-2xl flex items-center px-4 gap-4 opacity-70">
-                  <div className="w-5 h-5 rounded bg-black/10" />
-                  <div className="h-2 w-1/3 bg-black/10 rounded-full" />
+                <div className="h-16 glass-card glass-card-stat glass-noise rounded-2xl flex items-center px-4 gap-4 opacity-70 shadow-[inset_0_2px_8px_rgba(255,255,255,0.08),0_2px_8px_rgba(0,0,0,0.03)]">
+                  <div className="w-5 h-5 rounded bg-gradient-to-br from-black/12 via-black/6 to-transparent" />
+                  <div className="h-2 w-1/3 bg-gradient-to-r from-black/12 via-black/6 to-transparent rounded-full" />
                 </div>
               </div>
             </div>
@@ -144,11 +159,27 @@ export default function HomePage() {
         ref={(el) => { if (el) sectionRefs.current["solution"] = el; }}
         className={`relative z-10 py-32 px-8 max-w-7xl mx-auto w-full transition-all duration-1000 ${isVisible["solution"] ? "opacity-100 translate-y-0" : "opacity-0 translate-y-24"}`}
       >
-        <div className="glass-card text-primary rounded-[60px] p-12 lg:p-24 overflow-hidden relative group">
-          <div
-            className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent blur-[140px] rounded-full transition-transform duration-700 ease-out opacity-20"
-            style={{ transform: `translate(30%, -30%) translateY(${scrollY * 0.1}px)` }}
-          />
+        <div className="glass-card glass-card-hero glass-noise text-primary rounded-[60px] p-12 lg:p-24 overflow-hidden relative group ambient-glow">
+          {/* Multi-layered ambient glow system */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div
+              className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-radial from-accent/30 via-transparent to-transparent blur-[100px] rounded-full transition-transform duration-700 ease-out opacity-40"
+              style={{ transform: `translate(30%, -30%) translateY(${scrollY * 0.1}px)` }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-radial from-blue-500/10 via-transparent to-transparent blur-[80px] rounded-full"
+              style={{ transform: `translate(-20%, 20%)` }}
+            />
+          </div>
+
+          {/* Noise overlay for texture */}
+          <div className="absolute inset-0 glass-noise pointer-events-none" />
+
+          {/* Edge light simulation */}
+          <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(255,255,255,0.05)] pointer-events-none" />
+
+          {/* Inner glow that appears on hover */}
+          <div className="inner-glow absolute inset-0 pointer-events-none transition-opacity duration-500 opacity-0 group-hover:opacity-100" />
 
           <div className="relative z-10 flex flex-col lg:flex-row gap-20 items-center">
             <div className="lg:w-1/2">
@@ -179,20 +210,25 @@ export default function HomePage() {
               ].map((item, i) => (
                 <div
                   key={i}
-                  className="glass-card p-8 rounded-[32px] transition-transform duration-500 text-primary"
+                  className="glass-card glass-card-stat glass-noise p-8 rounded-[32px] transition-all duration-500 text-primary hover:-translate-y-2 group"
                   style={{ transform: `translateY(${scrollY * item.speed}px)` }}
                 >
-                  {item.type === "stat" ? (
-                    <>
-                      <div className="text-4xl font-black mb-1 text-accent">{item.label}</div>
-                      <div className="text-[10px] uppercase font-black tracking-widest text-secondary">{item.label2}</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-2xl font-black mb-1 text-primary">{item.label}</div>
-                      <div className="text-[10px] uppercase font-black tracking-widest text-secondary">{item.sub}</div>
-                    </>
-                  )}
+                  {/* Inner highlight */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent rounded-[32px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                  <div className="relative z-10">
+                    {item.type === "stat" ? (
+                      <>
+                        <div className="text-4xl font-black mb-1 text-accent drop-shadow-[0_0_10px_rgba(37,99,235,0.2)]">{item.label}</div>
+                        <div className="text-[10px] uppercase font-black tracking-[0.2em] text-secondary/80">{item.label2}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-2xl font-black mb-1 text-primary group-hover:text-accent transition-colors duration-300">{item.label}</div>
+                        <div className="text-[10px] uppercase font-black tracking-[0.2em] text-secondary/80">{item.sub}</div>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

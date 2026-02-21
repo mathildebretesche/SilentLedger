@@ -66,45 +66,142 @@ body {
 }
 
 /* ── True Glassmorphism with Diffraction ───────────────────────────────────── */
+/* Base subtle noise texture for realistic glass effect */
+.glass-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+}
+
+/* Enhanced multi-layer glass card */
 .glass-card {
   position: relative;
-  background: linear-gradient(
+  background:
+    /* Ultra-thin highlight layer */
+    linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, transparent 50%) top left,
+    linear-gradient(225deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%) top right,
+    linear-gradient(315deg, rgba(255, 255, 255, 0.08) 0%, transparent 50%) bottom right,
+    linear-gradient(45deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%) bottom left,
+    /* Main gradient body */
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.05) 40%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+  backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+
+  /* Sophisticated border system */
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-image: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.3) 100%
+  ) 1;
 
-  /* Primary border */
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Multi-layered shadow system for depth */
+  box-shadow:
+    /* Primary ambient shadow */
+    0 4px 30px 0 rgba(0, 0, 0, 0.04),
+    0 12px 40px -8px rgba(0, 0, 0, 0.06),
+    /* Inner glass highlights */
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    /* Edge light simulation */
+    inset 2px 2px 4px rgba(255, 255, 255, 0.15);
 
-  /* Deep shadow for elevation and internal highlights for glass effect */
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.03),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 1px rgba(255, 255, 255, 0.2);
-
-  border-radius: 24px;
+  border-radius: 28px;
   transition:
-    transform 0.4s cubic-bezier(0.34, 1, 0.64, 1),
-    box-shadow 0.4s ease,
+    transform 0.5s cubic-bezier(0.34, 1, 0.64, 1),
+    box-shadow 0.5s cubic-bezier(0.34, 1, 0.64, 1),
     border-color 0.4s ease,
-    background 0.4s ease;
+    background 0.5s ease,
+    filter 0.4s ease;
+}
+
+/* Subtle floating animation for hero elements */
+@keyframes glassFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+}
+
+.glass-card.animate-float {
+  animation: glassFloat 6s ease-in-out infinite;
+}
+
+/* Delay variants for staggered animations */
+.glass-card.animate-float:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.glass-card.animate-float:nth-child(3) {
+  animation-delay: 2s;
 }
 
 .glass-card:hover {
-  transform: translateY(-6px) scale(1.005);
-  border-color: rgba(255, 255, 255, 0.4);
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.2) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
+  transform: translateY(-10px) scale(1.008);
+  border-color: rgba(255, 255, 255, 0.5);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, transparent 50%),
+    linear-gradient(225deg, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
+    linear-gradient(315deg, rgba(255, 255, 255, 0.12) 0%, transparent 50%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.25) 0%,
+      rgba(255, 255, 255, 0.08) 40%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    0 20px 60px -12px rgba(0, 0, 0, 0.12),
+    0 8px 24px -4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 2px 2px 6px rgba(255, 255, 255, 0.25),
+    0 0 40px rgba(37, 99, 235, 0.08);
+  filter: brightness(1.03);
+}
+
+/* Active/pressed state */
+.glass-card:active {
+  transform: translateY(-4px) scale(1.002);
+  box-shadow:
+    0 8px 24px -4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Slight variant with softer blur */
+.glass-card-soft {
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 32px;
+}
+
+/* Large hero card variant */
+.glass-card-hero {
+  border-radius: 48px;
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+}
+
+/* Small stat/badge variant */
+.glass-card-stat {
+  border-radius: 20px;
+  backdrop-filter: blur(16px) saturate(160%);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
 }
 
 .glass-panel {
@@ -287,13 +384,27 @@ body {
 .shimmer {
   background: linear-gradient(90deg,
       var(--bg-elevated) 25%,
-      rgba(255, 255, 255, 0.04) 50%,
+      rgba(255, 255, 255, 0.06) 50%,
       var(--bg-elevated) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 6px;
+  position: relative;
+  overflow: hidden;
 }
 
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  animation: shimmerPass 2s infinite;
+}
 
 @keyframes shimmer {
   0% {
@@ -303,6 +414,122 @@ body {
   100% {
     background-position: -200% 0;
   }
+}
+
+@keyframes shimmerPass {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Ambient glow for sections ─────────────────────────────────────────────── */
+.ambient-glow {
+  position: relative;
+}
+
+.ambient-glow::before {
+  content: "";
+  position: absolute;
+  inset: -100px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(37, 99, 235, 0.08) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Edge light effect for hover enhancement ─────────────────────────────── */
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.glass-card:hover::after {
+  opacity: 1;
+}
+
+/* ── Gradient border variant ──────────────────────────────────────────────── */
+.glass-card-gradient {
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+.glass-card-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.5),
+    rgba(168, 85, 247, 0.3),
+    rgba(236, 72, 153, 0.3)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.glass-card-gradient:hover::before {
+  opacity: 1;
+}
+
+/* ── Tinted glass variants ─────────────────────────────────────────────────── */
+.glass-card-tint-blue {
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.glass-card-tint-purple {
+  background:
+    linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+/* ── Inner glow hover effect ─────────────────────────────────────────────── */
+@keyframes innerGlow {
+  0% {
+    box-shadow: inset 0 0 20px rgba(37, 99, 235, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 30px rgba(37, 99, 235, 0.1), inset 0 0 60px rgba(37, 99, 235, 0.05);
+  }
+  100% {
+    box-shadow: inset 0 0 20px rgba(37, 99, 235, 0);
+  }
+}
+
+.glass-card:hover .inner-glow {
+  animation: innerGlow 2s ease-in-out infinite;
 }
 
 /* ── Modal overlay animations ─────────────────────────────────────────────── */

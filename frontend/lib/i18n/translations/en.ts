@@ -196,7 +196,7 @@ export const en = {
     },
     overview: {
       subtitle: "Your reputation is now anchored",
-      subtitleBold: "completely anonymous.",
+      subtitleBold: "and completely anonymous.",
       stats: {
         silentProofs: "Silent Proofs",
         credentials: "Credentials",

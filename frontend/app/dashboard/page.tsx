@@ -475,7 +475,7 @@ export default function SilentDashboard() {
             <TrustWheel value={trustScore} />
 
             <p className="text-lg sm:text-xl font-medium tracking-tight text-secondary max-w-2xl mb-16 mt-8">
-              {t.dashboard.overview.subtitle} <br className="hidden sm:block" /> et
+              {t.dashboard.overview.subtitle} <br className="hidden sm:block" />
               <span className="text-primary font-bold italic ml-2">{t.dashboard.overview.subtitleBold}</span>
             </p>
 
