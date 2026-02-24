@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import { Web3Provider } from "@/providers/Web3Provider";
+import { ClientWeb3Provider } from "@/providers/ClientWeb3Provider";
 import { AppBackground } from "@/components/AppBackground";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
@@ -30,10 +30,10 @@ export default function RootLayout({
       </head>
       <body>
         <LanguageProvider>
-          <Web3Provider>
+          <ClientWeb3Provider>
             <AppBackground />
             {children}
-          </Web3Provider>
+          </ClientWeb3Provider>
         </LanguageProvider>
       </body>
     </html>

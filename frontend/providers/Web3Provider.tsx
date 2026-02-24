@@ -56,18 +56,24 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     setMounted(true);
   }, []);
 
+  // Ne monter les providers Web3 qu'après hydratation côté client.
+  // wagmi/WalletConnect accèdent à localStorage à l'init → crash SSR sinon.
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
   return (
     <WagmiCoreProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           theme={darkTheme({
-            accentColor: "#7C3AED", // violet Silent Ledger
+            accentColor: "#7C3AED",
             accentColorForeground: "white",
             borderRadius: "medium",
             fontStack: "system",
           })}
         >
-          {mounted && children}
+          {children}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiCoreProvider>

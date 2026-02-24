@@ -60,7 +60,6 @@ export default function ProfilePage() {
     data: attestationUIDs,
     isLoading: isLoadingAttestations,
     isFetching: isFetchingAttestations,
-    refetch: refetchAttestations,
   } = useReadContract({
     address: ATTESTER_ADDRESS,
     abi: SILENT_LEDGER_ATTESTER_ABI,
@@ -538,7 +537,7 @@ export default function ProfilePage() {
                     </h3>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {sbts.map((sbtDetail: any, i: number) => {
+                    {sbts.map((sbtDetail: { result?: { competenceName?: string } }, i: number) => {
                       const tokenId = sbtTokenIds?.[i];
                       return (
                         <div
@@ -552,7 +551,7 @@ export default function ProfilePage() {
                           <div className="flex justify-between items-start">
                             <div>
                               <p className="text-sm font-bold text-primary mb-1">
-                                {sbtDetail?.certification?.name || t.profile?.certifiedBadge || "Certified Badge"}
+                                {sbtDetail?.result?.competenceName || t.profile?.certifiedBadge || "Certified Badge"}
                               </p>
                               <p className="text-xs text-secondary font-mono">
                                 {t.profile?.tokenId || "Token ID"}: {tokenId?.toString()}
